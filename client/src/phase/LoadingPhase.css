@@ -1,0 +1,13 @@
+/*
+**  Copyright 2017 Keith Irwin. All rights reserved.
+**  Use of this source code is governed by a BSD-style
+**  license that can be found in the LICENSE file.
+*/
+
+.Loading h1 {
+  color: darkred;
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -30%);
+}
