@@ -17,119 +17,14 @@
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
-	"os"
-	"path"
-	"path/filepath"
-	"regexp"
 	"strings"
+
+	"github.com/zentrope/proxy/server"
 )
-
-//-----------------------------------------------------------------------------
-
-type AppMetadata struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     string `json:"version"`
-	Date        string `json:"date"`
-	Author      string `json:"author"`
-}
-
-type App struct {
-	Metadata AppMetadata `json:"metadata"`
-	Icon     string      `json:"icon"`
-	Context  string      `json:"context"`
-}
-
-// Remove the XML header from SVG and trim whitespace from either end.
-func TrimSvg(svg string) string {
-	reg, err := regexp.Compile("[<][?].*[?][>]")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strings.TrimSpace(reg.ReplaceAllString(svg, ""))
-}
-
-func findApps(dir string) ([]App, error) {
-
-	var icons = make(map[string]string, 0)
-	var metadata = make(map[string]AppMetadata, 0)
-
-	setIcon := func(parent, p string) error {
-		bytes, err := ioutil.ReadFile(p)
-		if err != nil {
-			return err
-		}
-
-		icons[parent] = TrimSvg(string(bytes))
-		return nil
-	}
-
-	setMeta := func(parent, p string) error {
-		bytes, err := ioutil.ReadFile(p)
-
-		if err != nil {
-			return err
-		}
-
-		var meta AppMetadata
-		if err := json.Unmarshal(bytes, &meta); err != nil {
-			return err
-		}
-
-		metadata[parent] = meta
-		return nil
-	}
-
-	visit := func(p string, f os.FileInfo, err error) error {
-		// Fragile because it's possible to find deeply nested svg and
-		// metadata files using this general walker.
-
-		if p == dir {
-			return nil
-		}
-
-		parent := path.Base(path.Dir(p))
-
-		if parent == path.Base(dir) {
-			return nil
-		}
-
-		if path.Base(p) == "icon.svg" {
-			if err := setIcon(parent, p); err != nil {
-				return err
-			}
-		}
-
-		if path.Base(p) == "metadata.js" {
-			if err := setMeta(parent, p); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	apps := make([]App, 0)
-
-	err := filepath.Walk(dir, visit)
-	if err != nil {
-		return apps, err
-	}
-
-	for context, icon := range icons {
-		apps = append(apps, App{
-			Icon:     icon,
-			Metadata: metadata[context],
-			Context:  context,
-		})
-	}
-
-	return apps, nil
-}
 
 //-----------------------------------------------------------------------------
 
@@ -156,32 +51,58 @@ func makeContextDirector(routes RouteMap) func(req *http.Request) {
 	}
 }
 
+func (s ProxyConfig) IsApi(r *http.Request) bool {
+	return s.Routes[getPathContext(r)] != ""
+}
+
 //-----------------------------------------------------------------------------
 
 type RouteMap map[string]string
 
 type ProxyConfig struct {
-	StaticHandler http.Handler
+	Applications  *server.Applications
 	Routes        RouteMap
+	StaticHandler http.Handler
+}
+
+func logRequest(r *http.Request) {
+	log.Printf("%v %v", r.Method, r.URL.Path)
 }
 
 func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	context := getPathContext(r)
-	isApi := s.Routes[context] != ""
+	logRequest(r)
 
-	// New reverse proxy handler each time so that we can dynamically
-	// update the routing table in a thread-safe way.
-
-	if isApi {
+	if s.IsApi(r) {
+		//
+		// New reverse proxy handler each time so that we can dynamically
+		// update the routing table in a thread-safe way.
+		//
 		p := &httputil.ReverseProxy{Director: makeContextDirector(s.Routes)}
+		//
 		// Also takes a ModifyResponse function which you could use to
 		// rewrite URL paths in the response if you assume the proxied app
 		// assumes a root path.
+		//
 		p.ServeHTTP(w, r)
 		return
 	}
 
-	s.StaticHandler.ServeHTTP(w, r)
+	switch getPathContext(r) {
+
+	case "shell":
+		s.Applications.Reload()
+		json, err := s.Applications.AsJSON()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprintf(w, json)
+		return
+
+	default:
+		s.StaticHandler.ServeHTTP(w, r)
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -189,11 +110,7 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.Println("Dynamic Proxy Experiment")
 
-	apps, err := findApps("./public")
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("%#v", apps)
+	appDir := "./public"
 
 	routes := RouteMap{
 		"api":  "localhost:10001",
@@ -201,7 +118,8 @@ func main() {
 	}
 
 	proxy := ProxyConfig{
-		StaticHandler: http.FileServer(http.Dir("./public")),
+		StaticHandler: http.FileServer(http.Dir(appDir)),
+		Applications:  server.NewApplications(appDir),
 		Routes:        routes,
 	}
 
