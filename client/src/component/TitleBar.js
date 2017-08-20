@@ -16,21 +16,23 @@
 
 import React from 'react';
 
-import { LaunchPad } from '../component/LaunchPad'
-import { TitleBar } from '../component/TitleBar'
+import './TitleBar.css'
 
-class MainPhase extends React.PureComponent {
+class TitleBar extends React.PureComponent {
 
   render() {
-    const { onLogout } = this.props
+    const { name, onLogout } = this.props
 
     return (
-      <section className="ApplicationShell">
-        <TitleBar name="Application Shell" onLogout={onLogout}/>
-        <LaunchPad/>
+      <section className="TitleBar">
+        <div className="Name">{ name }</div>
+        <div className="Buttons">
+          <button onClick={onLogout}>Sign out</button>
+        </div>
       </section>
     )
   }
 }
 
-export { MainPhase }
+
+export { TitleBar }
