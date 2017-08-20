@@ -17,11 +17,121 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"os"
+	"path"
+	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+//-----------------------------------------------------------------------------
+
+type AppMetadata struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Version     string `json:"version"`
+	Date        string `json:"date"`
+	Author      string `json:"author"`
+}
+
+type App struct {
+	Metadata AppMetadata `json:"metadata"`
+	Icon     string      `json:"icon"`
+	Context  string      `json:"context"`
+}
+
+// Remove the XML header from SVG and trim whitespace from either end.
+func TrimSvg(svg string) string {
+	reg, err := regexp.Compile("[<][?].*[?][>]")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strings.TrimSpace(reg.ReplaceAllString(svg, ""))
+}
+
+func findApps(dir string) ([]App, error) {
+
+	var icons = make(map[string]string, 0)
+	var metadata = make(map[string]AppMetadata, 0)
+
+	setIcon := func(parent, p string) error {
+		bytes, err := ioutil.ReadFile(p)
+		if err != nil {
+			return err
+		}
+
+		icons[parent] = TrimSvg(string(bytes))
+		return nil
+	}
+
+	setMeta := func(parent, p string) error {
+		bytes, err := ioutil.ReadFile(p)
+
+		if err != nil {
+			return err
+		}
+
+		var meta AppMetadata
+		if err := json.Unmarshal(bytes, &meta); err != nil {
+			return err
+		}
+
+		metadata[parent] = meta
+		return nil
+	}
+
+	visit := func(p string, f os.FileInfo, err error) error {
+		// Fragile because it's possible to find deeply nested svg and
+		// metadata files using this general walker.
+
+		if p == dir {
+			return nil
+		}
+
+		parent := path.Base(path.Dir(p))
+
+		if parent == path.Base(dir) {
+			return nil
+		}
+
+		if path.Base(p) == "icon.svg" {
+			if err := setIcon(parent, p); err != nil {
+				return err
+			}
+		}
+
+		if path.Base(p) == "metadata.js" {
+			if err := setMeta(parent, p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	apps := make([]App, 0)
+
+	err := filepath.Walk(dir, visit)
+	if err != nil {
+		return apps, err
+	}
+
+	for context, icon := range icons {
+		apps = append(apps, App{
+			Icon:     icon,
+			Metadata: metadata[context],
+			Context:  context,
+		})
+	}
+
+	return apps, nil
+}
+
+//-----------------------------------------------------------------------------
 
 func getPathContext(req *http.Request) string {
 	return strings.Split(req.URL.Path, "/")[1]
@@ -46,7 +156,7 @@ func makeContextDirector(routes RouteMap) func(req *http.Request) {
 	}
 }
 
-//----
+//-----------------------------------------------------------------------------
 
 type RouteMap map[string]string
 
@@ -74,8 +184,16 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.StaticHandler.ServeHTTP(w, r)
 }
 
+//-----------------------------------------------------------------------------
+
 func main() {
 	log.Println("Dynamic Proxy Experiment")
+
+	apps, err := findApps("./public")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%#v", apps)
 
 	routes := RouteMap{
 		"api":  "localhost:10001",
