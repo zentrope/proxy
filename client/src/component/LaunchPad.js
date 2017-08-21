@@ -18,11 +18,56 @@ import React from 'react';
 
 import './LaunchPad.css'
 
+class AppIcon extends React.PureComponent {
+
+  render() {
+    const { icon } = this.props
+
+    return (
+      <div className="AppIcon">
+        <div dangerouslySetInnerHTML={{ __html: icon }}/>
+      </div>
+    )
+  }
+}
+
+class Application extends React.PureComponent {
+
+  constructor(props) {
+    super(props)
+    this.launch = this.launch.bind(this)
+  }
+
+  launch() {
+    let context = this.props.application.context
+    window.location.href = "http://localhost:8080/" + context
+  }
+
+  render() {
+    const { application } = this.props
+
+    return (
+      <div className="Application" >
+        <div onClick={this.launch}>
+          <AppIcon icon={application.icon}/>
+        </div>
+        <div className="Title">{application.metadata.name}</div>
+        <div className="Context">/{application.context}</div>
+      </div>
+    )
+  }
+}
+
 class LaunchPad extends React.PureComponent {
 
   render() {
+    const { apps } = this.props
+
     return (
       <section className="LaunchPad">
+        { apps.map(a => <Application
+                          key={a.context}
+                          application={a}/>) }
       </section>
     )
   }

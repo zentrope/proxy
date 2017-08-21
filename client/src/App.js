@@ -20,6 +20,8 @@ import { LoadingPhase } from './phase/LoadingPhase'
 import { LoginPhase } from './phase/LoginPhase'
 import { MainPhase } from './phase/MainPhase'
 
+import { Client } from './Client'
+
 const LOADING = 0
 const LOGGED_OUT = -1
 const LOGGED_IN = 1
@@ -29,8 +31,11 @@ class App extends React.PureComponent {
   constructor(props) {
     super(props)
     this.state = {
-      loggedIn: LOADING
+      loggedIn: LOADING,
+      apps: [],
     }
+
+    this.client = new Client("http://localhost:8080")
 
     this.onLogout = this.onLogout.bind(this)
     this.onLogin = this.onLogin.bind(this)
@@ -44,19 +49,23 @@ class App extends React.PureComponent {
   onLogin(token) {
     this.setState({loggedIn: LOGGED_IN})
     localStorage.setItem("auth-token", token)
+
+    this.client.fetchApplications((apps) => {
+      this.setState({apps: apps.applications})
+    })
   }
 
   componentDidMount() {
     let token = localStorage.getItem("auth-token")
     if (token) {
-      this.setState({loggedIn: LOGGED_IN})
+      this.onLogin(token)
     } else {
-      this.setState({loggedIn: LOGGED_OUT})
+      this.onLogout()
     }
   }
 
   render() {
-    const { loggedIn } = this.state
+    const { loggedIn, apps } = this.state
 
     switch (loggedIn) {
 
@@ -67,7 +76,7 @@ class App extends React.PureComponent {
         return (<LoginPhase login={this.onLogin}/>)
 
       case LOGGED_IN:
-        return (<MainPhase onLogout={this.onLogout}/>)
+        return (<MainPhase onLogout={this.onLogout} apps={apps}/>)
 
       default:
         return (<LoadingPhase/>)

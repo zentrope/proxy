@@ -22,12 +22,12 @@ import { TitleBar } from '../component/TitleBar'
 class MainPhase extends React.PureComponent {
 
   render() {
-    const { onLogout } = this.props
+    const { onLogout, apps } = this.props
 
     return (
       <section className="ApplicationShell">
         <TitleBar name="Application Shell" onLogout={onLogout}/>
-        <LaunchPad/>
+        <LaunchPad apps={apps}/>
       </section>
     )
   }
