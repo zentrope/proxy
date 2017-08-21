@@ -69,8 +69,26 @@ func logRequest(r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
 }
 
+func setCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers",
+		"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
+
 func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logRequest(r)
+
+	// Localhost development.
+	setCORS(w)
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	if r.Method == "HEAD" {
+		return
+	}
 
 	if s.IsApi(r) {
 		//
