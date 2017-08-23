@@ -49,7 +49,8 @@ func makeContextDirector(routes RouteMap) func(req *http.Request) {
 		req.URL.Path = removePathContext(req)
 
 		// So that back-ends can prefix URLs to get back here.
-		req.Header.Set("X-Proxy-Context", "http://"+req.Host+"/"+context)
+		//req.Header.Set("X-Proxy-Context", "http://"+req.Host+"/"+context)
+		req.Header.Set("X-Proxy-Context", context)
 
 		log.Printf("http://%v%v --> %v", host, path, req.URL.String())
 	}
