@@ -47,7 +47,8 @@ var routeMap = map[string]string{
 }
 
 func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("request: %v", r.URL)
+	prefix := r.Header.Get("X-Proxy-Context")
+	log.Printf("request: %v%v", prefix, r.URL)
 
 	context := strings.Split(r.URL.Path, "/")[1]
 	route := routeMap[context]
@@ -64,13 +65,13 @@ func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		 <body>
 			<h1>%v</h1>
 			<ul>
-				<li><a href="/scan">Isolinear matrix scans</a></li>
-				<li><a href="/schedule">Engineering deck maintenance schedules</a></li>
+				<li><a href="%s/scan">Isolinear matrix scans</a></li>
+				<li><a href="%s/schedule">Engineering deck maintenance schedules</a></li>
 			</ul>
 		 </body>
 		</html>`
 	id := fmt.Sprintf("%v (port: %v)", s.message, s.port)
-	fmt.Fprintf(w, doc, id, id)
+	fmt.Fprintf(w, doc, id, id, prefix, prefix)
 }
 
 func main() {

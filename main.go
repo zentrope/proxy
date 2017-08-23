@@ -42,10 +42,14 @@ func makeContextDirector(routes RouteMap) func(req *http.Request) {
 	return func(req *http.Request) {
 		host := req.Host
 		path := req.URL.Path
+		context := getPathContext(req)
 
 		req.URL.Scheme = "http"
-		req.URL.Host = routes[getPathContext(req)]
+		req.URL.Host = routes[context]
 		req.URL.Path = removePathContext(req)
+
+		// So that back-ends can prefix URLs to get back here.
+		req.Header.Set("X-Proxy-Context", "http://"+req.Host+"/"+context)
 
 		log.Printf("http://%v%v --> %v", host, path, req.URL.String())
 	}
@@ -76,6 +80,11 @@ func setCORS(w http.ResponseWriter) {
 		"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
 
+// func setProxyContext(res *http.Response) error {
+//	res.Header.Set("X-Proxy-Context", getPathContext(r))
+//	return nil
+// }
+
 func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logRequest(r)
 
@@ -95,7 +104,14 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// New reverse proxy handler each time so that we can dynamically
 		// update the routing table in a thread-safe way.
 		//
-		p := &httputil.ReverseProxy{Director: makeContextDirector(s.Routes)}
+
+		p := &httputil.ReverseProxy{
+			Director: makeContextDirector(s.Routes),
+			ModifyResponse: func(res *http.Response) error {
+				res.Header.Set("X-Proxy-Context", getPathContext(r))
+				return nil
+			},
+		}
 		//
 		// Also takes a ModifyResponse function which you could use to
 		// rewrite URL paths in the response if you assume the proxied app
