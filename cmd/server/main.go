@@ -19,8 +19,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type ServerConfig struct {
@@ -28,7 +30,32 @@ type ServerConfig struct {
 	message string
 }
 
+func writeFile(w http.ResponseWriter, filename string) {
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json; charset=utf-8")
+	w.Write(content)
+}
+
+var routeMap = map[string]string{
+	"scan":     "scans.js",
+	"schedule": "schedule.js",
+}
+
 func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("request: %v", r.URL)
+
+	context := strings.Split(r.URL.Path, "/")[1]
+	route := routeMap[context]
+	if route != "" {
+		writeFile(w, route)
+		return
+	}
+
 	doc := `<!doctype html>
 	 <html>
 		 <head>
@@ -36,9 +63,12 @@ func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		 </head>
 		 <body>
 			<h1>%v</h1>
+			<ul>
+				<li><a href="/scan">Isolinear matrix scans</a></li>
+				<li><a href="/schedule">Engineering deck maintenance schedules</a></li>
+			</ul>
 		 </body>
 		</html>`
-	log.Printf("request: %v", r.URL)
 	id := fmt.Sprintf("%v (port: %v)", s.message, s.port)
 	fmt.Fprintf(w, doc, id, id)
 }
@@ -49,13 +79,13 @@ func main() {
 	// a dynamic proxy.
 
 	port := flag.String("port", "10001", "Port")
-	msg := flag.String("message", "Hello World", "Message to display.")
+	msg := flag.String("message", "Starship Maintenance", "Message to display.")
 
 	flag.Parse()
 
-	fmt.Printf("Test Server\n")
-	fmt.Printf(" port: %v\n", *port)
-	fmt.Printf(" msg:  %v\n", *msg)
+	log.Printf("Test Server\n")
+	log.Printf(" msg:  %v\n", *msg)
+	log.Printf(" port: %v\n", *port)
 
 	config := ServerConfig{*port, *msg}
 
