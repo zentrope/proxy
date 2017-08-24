@@ -16,9 +16,12 @@
 
 PACKAGE = github.com/zentrope/proxy
 
-.PHONY: build run help build-client clean
+.PHONY: build run help build-client clean tree
 
 .DEFAULT_GOAL := help
+
+tree: ## Display the source code absent node_modules
+	tree -C -I node_modules
 
 build-client: ## Build the client application
 	cd client ; yarn build
