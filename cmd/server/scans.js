@@ -6,25 +6,25 @@
     "stop": "2017-07-04 04:05:00",
     "schedule": {
       "month": "*",
-      "day-of-week": "*",
+      "dayOfWeek": "*",
       "hours": "*",
       "minutes": "*",
       "seconds": "*",
-      "day-of-month": "*"
+      "dayOfMonth": "*"
     }
   },
   {
     "process": "proc:gl:cc109dae-eb7e-4e99-b848-70c7cdb56829",
     "isolinear_matrix": "10.0.2/24",
-    "start": "2017-05-05 11:05:00",
-    "stop": "2017-07-04 04:05:00",
+    "start": "2015-09-12 11:05:00",
+    "stop": "2018-11-04 04:05:00",
     "schedule": {
-      "month": "*",
-      "day-of-week": "*",
-      "hours": "*",
-      "minutes": "*",
+      "month": "5,6,7",
+      "dayOfWeek": "4,5",
+      "hours": "4",
+      "minutes": "20",
       "seconds": "*",
-      "day-of-month": "*"
+      "dayOfMonth": "*"
     }
   },
   {
@@ -34,11 +34,11 @@
     "stop": "2017-07-04 04:05:00",
     "schedule": {
       "month": "*",
-      "day-of-week": "*",
-      "hours": "*",
-      "minutes": "*",
+      "dayOfWeek": "4",
+      "hours": "7",
+      "minutes": "17",
       "seconds": "*",
-      "day-of-month": "*"
+      "dayOfMonth": "*"
     }
   }
 ]

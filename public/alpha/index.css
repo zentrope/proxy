@@ -1,0 +1,42 @@
+html, body {
+  font-family: helvetica, sans-serif;
+}
+
+.WorkArea {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+h1 {
+  color: dodgerblue;
+}
+
+.TableContainer {
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border-bottom: 2px solid dodgerblue;
+}
+
+thead tr {
+  border-bottom: 2px solid dodgerblue;
+}
+
+thead tr th {
+  padding: 4px;
+  text-align: left;
+}
+
+tbody tr {
+  border-bottom: 1px dotted lightgray;
+}
+
+tbody tr td {
+  font-size: 12pt;
+  padding: 4px;
+  min-width: 100;
+  text-overflow: auto;
+  white-space: nowrap;
+}

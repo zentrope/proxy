@@ -32,18 +32,57 @@ const getData = (callback) =>
 // Rendering
 //-----------------------------------------------------------------------------
 
+let __SymCounter = 1;
+
+const genSym = () =>
+  "G_" + __SymCounter++;
+
 const e = React.createElement
+
+const orStar = (col) =>
+  col === "" ? "*" : col
+
+const renderSchedule = (scan) => {
+  let cols = [
+    orStar(scan.seconds),
+    orStar(scan.minutes),
+    orStar(scan.hours),
+    orStar(scan.dayOfMonth),
+    orStar(scan.month),
+    orStar(scan.dayOfWeek)
+  ]
+
+  if (scan.seconds === "*") {
+    cols.shift()
+  }
+
+  let cron = cols.join(" ")
+  let hasSeconds = cols.length === 6
+
+  return prettyCron.toString(cron, hasSeconds)
+}
+
+const renderDate = (date) => {
+  return moment(date).format("DD MMM YY - hh:mm A")
+}
 
 class Table extends React.PureComponent {
   render() {
-    const {scans} = this.props
-    return e('table', {},
-             e('thead', {},
-               e('tr', {},
-                 e('th', {}, "matrix"))),
-             e('tbody', {},
-               scans.map(s => e('tr', {key: s.process},
-                                e('td', {}, s.isolinear_matrix)))))
+    const { scans } = this.props
+    return e('div', {className: "TableContainer"},
+             e('table', {},
+               e('thead', {},
+                 e('tr', {},
+                   e('th', {}, "matrix"),
+                   e('th', {}, "schedule"),
+                   e('th', {}, "start"),
+                   e('th', {}, "stop") )),
+               e('tbody', {},
+                 scans.map(s => e('tr', {key: genSym()},
+                                  e('td', {}, s.isolinear_matrix),
+                                  e('td', {}, renderSchedule(s.schedule)),
+                                  e('td', {}, renderDate(s.start)),
+                                  e('td', {}, renderDate(s.stop)) )))))
   }
 }
 
@@ -62,8 +101,9 @@ class UI extends React.PureComponent {
     const {scans} = this.state
     return e('section', {},
              e('button', {onClick: () => window.location.href = '/'}, "Home"),
-             e('h1', {}, 'Isolinear Matrix Scans'),
-             e(Table, {scans: scans}, null))
+             e('div', {className: 'WorkArea'},
+               e('h1', {}, 'Isolinear Matrix Scans'),
+               e(Table, {scans: scans}, null)))
   }
 }
 
