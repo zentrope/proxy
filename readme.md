@@ -17,7 +17,38 @@ Stuff I want to document if it turns out to be what I need.
 
 * Authentication: TBD.
 
+## Application Shell Web Applications
 
+Include an environment file (using a relative link):
+
+    <script type="application/javascript" src="environment.js"></script>
+
+and include your application JavaScript in the same way:
+
+    <script type="application/javascript" src="code.js"></script>
+
+as well as CSS files, etc, etc.
+
+The environment.js file will get rewritten by the app-shell installer to be something like:
+
+    window.env = {
+      context: "/alpha",  // can be gotten from URL, actually.
+      endpoint: "/api"    // what to postfix to host to get at API.
+    }
+
+which you can use in your SPA app as:
+
+    var loc = window.location;
+    var env = window.env;
+    var API = loc.protocol + "//" + loc.host + env.api;
+
+then use the API for subsequent requests to the proxied API:
+
+    fetch(API + "/scans")
+      .then(function(response) { ... })
+      .catch(function(error) { ... })
+
+or whatever it is you want to do.
 
 ## Legal
 
