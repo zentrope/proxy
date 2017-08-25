@@ -16,31 +16,18 @@
 
 PACKAGE = github.com/zentrope/proxy
 
-.PHONY: build run help build-client clean tree
+.PHONY: build run clean help
 
 .DEFAULT_GOAL := help
-
-tree: ## Display the source code absent node_modules
-	tree -C -I node_modules
-
-build-client: ## Build the client application
-	cd client ; yarn build
 
 build: ## Build the app.
 	go build -o proxy
 
-deploy: build-client ## Build and deploy the production client.
-	mkdir -p public/home
-	rm -rf public/home/*
-	cp -r client/build/* public/home
-
-run: deploy ## Run the app from source
+run: ## Run the app from source
 	go run main.go
 
-clean: ## Clean build artifacts
+clean: ## Clean build artifacts (if any)
 	rm -f proxy
-	rm -rf client/build
-	rm -rf public/home
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' | sort
