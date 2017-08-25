@@ -19,9 +19,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 
 	"github.com/zentrope/proxy/server"
 )
@@ -79,6 +81,19 @@ type ProxyConfig struct {
 
 func logRequest(r *http.Request) {
 	log.Printf("[ %-12v ] -- %v %v", getPathContext(r), r.Method, r.URL.Path)
+}
+
+func isViableConnection(addr string) bool {
+
+	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+	if err != nil {
+		log.Printf("Connection error: %v", err)
+		return false
+	}
+
+	defer conn.Close()
+
+	return true
 }
 
 func setCORS(w http.ResponseWriter) {
@@ -150,8 +165,14 @@ func main() {
 	hostDir := "./client"
 
 	routes := RouteMap{
-		"api":  "localhost:10001",
-		"api2": "localhost:10002",
+		"api": "localhost:10001",
+		// "api2": "localhost:10002",
+	}
+
+	for k, v := range routes {
+		if !isViableConnection(v) {
+			log.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v'", k, v)
+		}
 	}
 
 	proxy := ProxyConfig{
