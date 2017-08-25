@@ -29,12 +29,18 @@ build-client: ## Build the client application
 build: ## Build the app.
 	go build -o proxy
 
-run: ## Run the app from source
+deploy: build-client ## Build and deploy the production client.
+	mkdir -p public/home
+	rm -rf public/home/*
+	cp -r client/build/* public/home
+
+run: deploy ## Run the app from source
 	go run main.go
 
 clean: ## Clean build artifacts
 	rm -f proxy
 	rm -rf client/build
+	rm -rf public/home
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' | sort

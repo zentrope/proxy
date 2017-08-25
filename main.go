@@ -65,13 +65,14 @@ func (s ProxyConfig) IsApi(r *http.Request) bool {
 type RouteMap map[string]string
 
 type ProxyConfig struct {
-	Applications  *server.Applications
-	Routes        RouteMap
-	StaticHandler http.Handler
+	Applications   *server.Applications
+	Routes         RouteMap
+	RootAppHandler http.Handler
+	StaticHandler  http.Handler
 }
 
 func logRequest(r *http.Request) {
-	log.Printf("%v %v", r.Method, r.URL.Path)
+	log.Printf("[ %-10v ] -- %v %v", getPathContext(r), r.Method, r.URL.Path)
 }
 
 func setCORS(w http.ResponseWriter) {
@@ -80,11 +81,6 @@ func setCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Headers",
 		"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
-
-// func setProxyContext(res *http.Response) error {
-//	res.Header.Set("X-Proxy-Context", getPathContext(r))
-//	return nil
-// }
 
 func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logRequest(r)
@@ -105,7 +101,6 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// New reverse proxy handler each time so that we can dynamically
 		// update the routing table in a thread-safe way.
 		//
-
 		p := &httputil.ReverseProxy{
 			Director: makeContextDirector(s.Routes),
 			ModifyResponse: func(res *http.Response) error {
@@ -113,11 +108,7 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return nil
 			},
 		}
-		//
-		// Also takes a ModifyResponse function which you could use to
-		// rewrite URL paths in the response if you assume the proxied app
-		// assumes a root path.
-		//
+
 		p.ServeHTTP(w, r)
 		return
 	}
@@ -133,6 +124,12 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		fmt.Fprintf(w, json)
+		return
+
+	case "static":
+		fallthrough
+	case "":
+		s.RootAppHandler.ServeHTTP(w, r)
 		return
 
 	default:
@@ -153,9 +150,10 @@ func main() {
 	}
 
 	proxy := ProxyConfig{
-		StaticHandler: http.FileServer(http.Dir(appDir)),
-		Applications:  server.NewApplications(appDir),
-		Routes:        routes,
+		StaticHandler:  http.FileServer(http.Dir(appDir)),
+		RootAppHandler: http.FileServer(http.Dir("./public/home")),
+		Applications:   server.NewApplications(appDir),
+		Routes:         routes,
 	}
 
 	server := http.Server{

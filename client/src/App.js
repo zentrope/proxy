@@ -35,7 +35,9 @@ class App extends React.PureComponent {
       apps: [],
     }
 
-    this.client = new Client("http://localhost:8080")
+    let loc = window.location
+    let url = loc.protocol + "//" + loc.host;
+    this.client = new Client(url)
 
     this.onLogout = this.onLogout.bind(this)
     this.onLogin = this.onLogin.bind(this)
