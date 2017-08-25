@@ -29,7 +29,13 @@ import (
 //-----------------------------------------------------------------------------
 
 func getPathContext(req *http.Request) string {
-	return strings.Split(req.URL.Path, "/")[1]
+	context := strings.Split(req.URL.Path, "/")[1]
+	// If the context contains a ".", assume it's a data file at the top
+	// of the directory.
+	if strings.Index(context, ".") != -1 {
+		return ""
+	}
+	return context
 }
 
 func removePathContext(req *http.Request) string {
@@ -72,7 +78,7 @@ type ProxyConfig struct {
 }
 
 func logRequest(r *http.Request) {
-	log.Printf("[ %-10v ] -- %v %v", getPathContext(r), r.Method, r.URL.Path)
+	log.Printf("[ %-12v ] -- %v %v", getPathContext(r), r.Method, r.URL.Path)
 }
 
 func setCORS(w http.ResponseWriter) {
@@ -126,8 +132,6 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, json)
 		return
 
-	case "static":
-		fallthrough
 	case "":
 		s.RootAppHandler.ServeHTTP(w, r)
 		return
@@ -143,6 +147,7 @@ func main() {
 	log.Println("Dynamic Proxy Experiment")
 
 	appDir := "./public"
+	hostDir := "./client"
 
 	routes := RouteMap{
 		"api":  "localhost:10001",
@@ -151,7 +156,7 @@ func main() {
 
 	proxy := ProxyConfig{
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
-		RootAppHandler: http.FileServer(http.Dir("./public/home")),
+		RootAppHandler: http.FileServer(http.Dir(hostDir)),
 		Applications:   server.NewApplications(appDir),
 		Routes:         routes,
 	}

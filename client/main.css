@@ -16,6 +16,120 @@
 ** limitations under the License.
 */
 
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: helvetica, sans-serif;
+}
+
+* {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+a {
+  color: #369;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:hover {
+  color: darkred;
+}
+
+a:active {
+  opacity: 0.5;
+}
+
+/*---------------------------------------------------------------------------*/
+
+.LaunchPad {
+  position: absolute;
+  top: 45px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #bdf;
+  background-color: #f0f0f0;
+
+  display: flex;
+
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+
+  cursor: default;
+}
+
+.Application {
+  width: 140px;
+  height: 140px;
+  margin: 20px;
+
+  display: flex row;
+
+}
+
+.AppIcon {
+  border: 1px solid silver;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: white;
+  text-align: center;
+  flex: 8;
+  cursor: pointer;
+}
+
+.AppIcon:hover {
+  background-color: #f6f6f6;
+}
+
+.AppIcon:active {
+  opacity: 0.5;
+}
+
+.Application .Title {
+  font-size: 11pt;
+  text-align: center;
+  flex: 1;
+  padding-top: 4px;
+  font-weight: bold;
+  color: #369;
+}
+
+.Application .Context {
+  font-size: 10pt;
+  text-align: center;
+  flex: 1;
+  padding-top: 4px;
+}
+
+.AppIcon svg {
+  width: 100px;
+  height: 100px;
+}
+
+path {
+  fill: #e57e00;
+}
+
+.AppIcon:hover path {
+  fill: peru;
+}
+
+/*---------------------------------------------------------------------------*/
+
+.Loading h1 {
+  color: darkred;
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -30%);
+}
+
+/*---------------------------------------------------------------------------*/
+
 .LoginForm {
   position: absolute;
   left: 0;
@@ -104,4 +218,31 @@
 
 .LoginForm .LoginPanel .VisitLink p {
   font-size: 12pt;
+}
+
+/*---------------------------------------------------------------------------*/
+
+.TitleBar {
+  background-color: #369;
+  color: white;
+  display: flex;
+  height: 45px;
+  align-items: center;
+}
+
+.TitleBar .Name {
+  flex: 1;
+  padding-left: 15px;
+  font-size: 18pt;
+  letter-spacing: 2px;
+}
+
+.TitleBar .Buttons {
+  flex: 1;
+  text-align: right;
+  padding-right: 15px;
+}
+
+.TitleBar .Buttons button {
+  cursor: pointer;
 }
