@@ -1,5 +1,5 @@
 {
-  "name": "Security Trends",
+  "name": "Maintenance Tasks",
   "description": "This is the omega application",
   "version": "11.514",
   "date": "2017-08-21",
