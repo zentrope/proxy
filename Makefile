@@ -16,12 +16,15 @@
 
 PACKAGE = github.com/zentrope/proxy
 
-.PHONY: build run clean help
+.PHONY: build run clean help run-backend
 
 .DEFAULT_GOAL := help
 
 build: ## Build the app.
 	go build -o proxy
+
+run-backend: ## Start (and block) on the example back-end server.
+	cd cmd/backend ; go run main.go
 
 run: ## Run the app from source
 	go run main.go
