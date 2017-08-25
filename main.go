@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zentrope/proxy/server"
+	"github.com/zentrope/proxy/internal"
 )
 
 //-----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ func (s ProxyConfig) IsApi(r *http.Request) bool {
 type RouteMap map[string]string
 
 type ProxyConfig struct {
-	Applications   *server.Applications
+	Applications   *internal.Applications
 	Routes         RouteMap
 	RootAppHandler http.Handler
 	StaticHandler  http.Handler
@@ -178,7 +178,7 @@ func main() {
 	proxy := ProxyConfig{
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
-		Applications:   server.NewApplications(appDir),
+		Applications:   internal.NewApplications(appDir),
 		Routes:         routes,
 	}
 
