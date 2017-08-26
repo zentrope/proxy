@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"strings"
 	"time"
 
@@ -60,7 +61,7 @@ func makeContextDirector(routes RouteMap) func(req *http.Request) {
 		//req.Header.Set("X-Proxy-Context", "http://"+req.Host+"/"+context)
 		req.Header.Set("X-Proxy-Context", context)
 
-		log.Printf("http://%v%v --> %v", host, path, req.URL.String())
+		logger.Printf("proxy: http://%v%v --> %v", host, path, req.URL.String())
 	}
 }
 
@@ -80,14 +81,14 @@ type ProxyConfig struct {
 }
 
 func logRequest(r *http.Request) {
-	log.Printf("[ %-12v ] -- %v %v", getPathContext(r), r.Method, r.URL.Path)
+	logger.Printf("%v %v", r.Method, r.URL.Path)
 }
 
 func isViableConnection(addr string) bool {
 
 	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 	if err != nil {
-		log.Printf("Connection error: %v", err)
+		logger.Printf("Connection error: %v", err)
 		return false
 	}
 
@@ -158,8 +159,16 @@ func (s ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
+var logger *log.Logger
+
+func init() {
+	flags := log.Ldate | log.Ltime
+	logger = log.New(os.Stdout, "(server): ", flags)
+}
+
 func main() {
-	log.Println("Dynamic Proxy Experiment")
+
+	logger.Println("Dynamic Proxy Experiment")
 
 	appDir := "./public"
 	hostDir := "./client"
@@ -171,7 +180,7 @@ func main() {
 
 	for k, v := range routes {
 		if !isViableConnection(v) {
-			log.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v'", k, v)
+			logger.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v'", k, v)
 		}
 	}
 
@@ -187,5 +196,5 @@ func main() {
 		Handler: proxy,
 	}
 
-	log.Fatal(server.ListenAndServe())
+	logger.Fatal(server.ListenAndServe())
 }

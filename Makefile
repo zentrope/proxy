@@ -16,21 +16,21 @@
 
 PACKAGE = github.com/zentrope/proxy
 
-.PHONY: build run clean help run-backend
+.PHONY: build run clean help
 
 .DEFAULT_GOAL := help
 
 build: ## Build the app.
+	go build -o backend cmd/backend/main.go
 	go build -o proxy
-
-run-backend: ## Start (and block) on the example back-end server.
-	cd cmd/backend ; go run main.go
 
 run: ## Run the app from source
 	go run main.go
 
 clean: ## Clean build artifacts (if any)
 	rm -f proxy
+	rm -f backend
+	rm -f cmd/backend/backend
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' | sort

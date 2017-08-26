@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -48,7 +49,7 @@ var routeMap = map[string]string{
 
 func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	prefix := r.Header.Get("X-Proxy-Context")
-	log.Printf("request: (%v) -> %v", prefix, r.URL)
+	logger.Printf("request: (%v) -> %v", prefix, r.URL)
 
 	context := strings.Split(r.URL.Path, "/")[1]
 	route := routeMap[context]
@@ -74,6 +75,13 @@ func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, doc, id, id, prefix, prefix)
 }
 
+var logger *log.Logger
+
+func init() {
+	flags := log.Ldate | log.Ltime
+	logger = log.New(os.Stdout, "(backend): ", flags)
+}
+
 func main() {
 
 	// The goal is to create a simple backend server we can use to test
@@ -84,9 +92,9 @@ func main() {
 
 	flag.Parse()
 
-	log.Printf("Test Server\n")
-	log.Printf(" msg:  %v\n", *msg)
-	log.Printf(" port: %v\n", *port)
+	logger.Printf("Test Server\n")
+	logger.Printf(" msg:  %v\n", *msg)
+	logger.Printf(" port: %v\n", *port)
 
 	config := ServerConfig{*port, *msg}
 
@@ -95,5 +103,5 @@ func main() {
 		Handler: config,
 	}
 
-	log.Fatal(server.ListenAndServe())
+	logger.Fatal(server.ListenAndServe())
 }
