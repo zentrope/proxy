@@ -19,11 +19,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/zentrope/proxy/cmd/backend/data"
 )
 
 type ServerConfig struct {
@@ -31,20 +32,14 @@ type ServerConfig struct {
 	message string
 }
 
-func writeFile(w http.ResponseWriter, filename string) {
-	content, err := ioutil.ReadFile(filename)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+func writeFile(w http.ResponseWriter, content string) {
 	w.Header().Set("content-type", "application/json; charset=utf-8")
-	w.Write(content)
+	w.Write([]byte(content))
 }
 
 var routeMap = map[string]string{
-	"scan":     "scans.js",
-	"schedule": "schedule.js",
+	"scan":     data.Scans,
+	"schedule": data.Schedule,
 }
 
 func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
