@@ -16,7 +16,7 @@
 
 PACKAGE = github.com/zentrope/proxy
 
-.PHONY: build run clean help
+.PHONY: build run clean help init vendor vendor-list
 
 .DEFAULT_GOAL := help
 
@@ -25,7 +25,7 @@ godep:
 		go get -v -u github.com/golang/dep/cmd/dep; \
 	fi
 
-vendor: godep
+vendor: godep ## Make sure vendor dependencies are present.
 	dep ensure
 
 vendor-list: ## List dependencies in vendor
@@ -44,7 +44,10 @@ clean: ## Clean build artifacts (if any)
 	rm -f cmd/backend/backend
 
 dist-clean: clean ## Clean everything, including vendor.
-	rm -f vendor/*
+	rm -rf vendor
+
+
+init: vendor ## Initalize project (pull in vendors)
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' | sort
