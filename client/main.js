@@ -115,13 +115,9 @@ class LoginPhase extends React.PureComponent {
     let { user, pass } = this.state
     user = user.trim()
 
-    const woot = (result) => {
-      console.log("woot")
-      login(result.token)
-    }
+    const woot = (result) => login(result.token)
 
     const fail = (err) => {
-      console.log("fail")
       this.setState({error: "Unable to sign in."})
       document.getElementById("user").focus()
     }
