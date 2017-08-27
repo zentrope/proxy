@@ -170,7 +170,7 @@ func (proxy ProxyConfig) HandleInstalledApps(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	http.SetCookie(w, newCookie(token))
+	setAuth(w, token)
 	proxy.StaticHandler.ServeHTTP(w, r)
 }
 
@@ -183,7 +183,7 @@ func (proxy ProxyConfig) HandleHomeApp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		unsetCookie(w)
 	} else {
-		http.SetCookie(w, newCookie(token))
+		setAuth(w, token)
 	}
 
 	return
@@ -290,7 +290,7 @@ func newCookie(token string) *http.Cookie {
 		Value:    token,
 		MaxAge:   threeDays,
 		Secure:   false, // only send cookie if HTTPS
-		HttpOnly: false, // clients can't see cookie
+		HttpOnly: true,  // clients can't see cookie
 		Unparsed: []string{"SameSite", "Strict"},
 	}
 }
