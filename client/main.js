@@ -27,12 +27,18 @@ class Client {
 
   constructor(url, errorDelegate) {
     this.url = url
+    this.authToken = "no-auth"
 
     if (errorDelegate) {
       this.errorDelegate = errorDelegate
     }
 
     this.checkStatus = this.checkStatus.bind(this)
+    this.errorDelegate = this.errorDelegate.bind(this)
+  }
+
+  setAuthToken(token) {
+    this.authToken = token
   }
 
   checkStatus(response) {
@@ -49,18 +55,33 @@ class Client {
     console.error(err)
   }
 
+  login(user, pass, success, failure) {
+    let query = { method: 'POST', body: JSON.stringify({"email": user, "password": pass})}
+    fetch(this.url + "/auth/", query)
+      .then(res => this.checkStatus(res))
+      .then(res => res.json())
+      .then(data => success(data))
+      .catch(err => failure(err))
+  }
+
+  validate(token, success, failure) {
+    let query = { method: 'POST', body: JSON.stringify({"token": token})}
+    fetch(this.url + "/auth", query)
+      .then(res => this.checkStatus(res))
+      .then(res => res.json())
+      .then(data => success(data))
+      .catch(err => failure(err))
+  }
+
   fetchApplications(callback) {
     let query = {
       method: 'GET',
-      headers: {
-        "Authorization": "Bearer fake.auth.token"
-      }
-    }
+      headers: { "Authorization": "Bearer " + this.authToken } }
     fetch(this.url + "/shell", query)
       .then(res => this.checkStatus(res))
       .then(res => res.json())
-      .catch(err => this.errorDelegate(err))
       .then(data => callback(data))
+      .catch(err => this.errorDelegate(err))
   }
 }
 
@@ -90,16 +111,22 @@ class LoginPhase extends React.PureComponent {
   }
 
   handleSubmit() {
-    const { login } = this.props
+    const { login, client } = this.props
     let { user, pass } = this.state
     user = user.trim()
 
-    if (user === 'root' && pass === 'test1234') {
-      login("fake.auth.token")
-    } else {
+    const woot = (result) => {
+      console.log("woot")
+      login(result.token)
+    }
+
+    const fail = (err) => {
+      console.log("fail")
       this.setState({error: "Unable to sign in."})
       document.getElementById("user").focus()
     }
+
+    client.login(user, pass, woot, fail)
   }
 
   handleChange(e) {
@@ -146,7 +173,7 @@ class LoginPhase extends React.PureComponent {
     return (
       e(Section, {className: "LoginForm"},
         e(Section, {className: "LoginPanel"},
-          e(H1, {}, "Sign in to the Application SHell"),
+          e(H1, {}, "Sign in to the Application Shell"),
           e(Div, {className: "Error"}, error),
           e(Div, {className: "Control"}, submit),
           e(Div, {className: "Widgets"},
@@ -208,7 +235,8 @@ class Application extends React.PureComponent {
 
   launch() {
     let context = this.props.application.context
-    window.location.href = "http://localhost:8080/" + context
+    let loc = window.location
+    window.location.href = "/" + context
   }
 
   render() {
@@ -271,25 +299,31 @@ class App extends React.PureComponent {
 
   onLogout() {
     this.setState({loggedIn: LOGGED_OUT})
-    localStorage.removeItem("auth-token")
+    localStorage.removeItem("authToken")
+    window.location.href = "/logout"
   }
 
   onLogin(token) {
     this.setState({loggedIn: LOGGED_IN})
-    localStorage.setItem("auth-token", token)
-
+    localStorage.setItem("authToken", token)
+    this.client.setAuthToken(token)
+    document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.client.fetchApplications((apps) => {
       this.setState({apps: apps.applications})
     })
   }
 
   componentDidMount() {
-    let token = localStorage.getItem("auth-token")
+    let token = localStorage.getItem("authToken")
+
+    let woot = (res) => this.onLogin(res.token)
+    let fail = (err) => this.setState({loggedIn: LOGGED_OUT})
+
     if (token) {
-      this.onLogin(token)
-    } else {
-      this.onLogout()
+      this.client.validate(token, woot, fail)
+      return
     }
+    fail()
   }
 
   render() {
@@ -301,7 +335,7 @@ class App extends React.PureComponent {
         return (e(LoadingPhase))
 
       case LOGGED_OUT:
-        return (e(LoginPhase, {login: this.onLogin}))
+        return (e(LoginPhase, {login: this.onLogin, client: this.client}))
 
       case LOGGED_IN:
         return (e(MainPhase, {onLogout: this.onLogout, apps: apps}))

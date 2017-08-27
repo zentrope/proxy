@@ -20,7 +20,18 @@ PACKAGE = github.com/zentrope/proxy
 
 .DEFAULT_GOAL := help
 
-build: ## Build the app.
+godep:
+	@hash dep > /dev/null 2>&1; if [ $$? -ne 0 ]; then \
+		go get -v -u github.com/golang/dep/cmd/dep; \
+	fi
+
+vendor: godep
+	dep ensure
+
+vendor-list: ## List dependencies in vendor
+	tree -C -d -L 2 vendor
+
+build: vendor ## Build the app.
 	go build -o backend cmd/backend/main.go
 	go build -o proxy
 
@@ -31,6 +42,9 @@ clean: ## Clean build artifacts (if any)
 	rm -f proxy
 	rm -f backend
 	rm -f cmd/backend/backend
+
+dist-clean: clean ## Clean everything, including vendor.
+	rm -f vendor/*
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' | sort

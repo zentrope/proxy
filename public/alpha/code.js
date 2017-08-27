@@ -21,12 +21,18 @@ const checkStatus = (response) => {
   }
 }
 
-const getData = (callback) =>
-  fetch(API + "/scan")
+const getData = (callback) => {
+  fetch(API + "/scan", {
+    method: 'GET',
+    credentials: 'include',
+    headers: new Headers({
+      "Authorization": 'Bearer ' + localStorage.getItem("authToken")
+    })})
     .then(res => checkStatus(res))
     .then(res => res.json())
     .then(data => callback(data))
     .catch(err => console.error(err))
+}
 
 //-----------------------------------------------------------------------------
 // Rendering
