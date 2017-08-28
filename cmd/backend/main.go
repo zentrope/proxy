@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/zentrope/proxy/cmd/backend/data"
@@ -47,6 +48,11 @@ func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	context := strings.Split(r.URL.Path, "/")[1]
 	route := routeMap[context]
+
+	if context == "kill9" {
+		os.Exit(9)
+	}
+
 	if route != "" {
 		writeFile(w, route)
 		return
