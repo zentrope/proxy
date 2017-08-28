@@ -10,9 +10,9 @@ const Schedule = `
 		"description": "Purge ionized dilithium particles Sundays at 3AM.",
 		"process": "proc:gl:904e331d-1853-4472-8694-79410cbea625",
 		"schedule": {
-			"minute": "*",
+			"minute": "15",
 			"hour": "3",
-			"month": "*",
+			"month": "1",
 			"year": "*",
 			"date": "*",
 			"day": "7"
@@ -30,7 +30,7 @@ const Schedule = `
 			"hour": "5",
 			"month": "*",
 			"year": "*",
-			"date": "*",
+			"date": "3",
 			"day": "*"
 		}
 	},
@@ -47,7 +47,7 @@ const Schedule = `
 			"month": "*",
 			"year": "*",
 			"date": "*",
-			"day": "*"
+			"day": "21"
 		}
 	}
 ]
