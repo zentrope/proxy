@@ -136,6 +136,8 @@ func (proxy ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "public, max-age=-1")
+
 	switch getPathContext(r) {
 
 	case "logout":
@@ -157,6 +159,7 @@ func (proxy ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			proxy.HandleInstalledApps(w, r)
 		}
 	}
+
 }
 
 //-----------------------------------------------------------------------------
