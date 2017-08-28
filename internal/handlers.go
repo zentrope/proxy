@@ -125,7 +125,7 @@ func (proxy ProxyConfig) MakeContextDirector() func(req *http.Request) {
 		//req.Header.Set("X-Proxy-Context", "http://"+req.Host+"/"+context)
 		req.Header.Set("X-Proxy-Context", context)
 
-		log.Printf("proxy: http://%v%v --> %v", host, path, req.URL.String())
+		log.Printf("  `-> proxy: http://%v%v --> %v", host, path, req.URL.String())
 	}
 }
 
@@ -196,7 +196,7 @@ func (proxy ProxyConfig) HandleInstalledApps(w http.ResponseWriter, r *http.Requ
 	token, err := checkAuth(w, r)
 	if err != nil {
 		unsetCookie(w)
-		writeError(w, http.StatusNotFound, err.Error())
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 

@@ -56,14 +56,14 @@ func MakeAuthToken(user *User) (string, error) {
 func IsValidAuthToken(tokenString string) (bool, error) {
 
 	if tokenString == "" {
-		log.Printf(" | auth.error: Token not found.")
+		log.Printf(" [x] auth.error: Token not found.")
 		return false, fmt.Errorf(BAD_AUTH_MSG)
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &ViewerClaims{}, checkAlgKey())
 
 	if err != nil {
-		log.Printf(" | auth.error: %v", err)
+		log.Printf(" [x] auth.error: %v", err)
 		return false, fmt.Errorf(BAD_AUTH_MSG)
 	}
 
@@ -73,7 +73,7 @@ func IsValidAuthToken(tokenString string) (bool, error) {
 func checkAlgKey() jwt.Keyfunc {
 	return func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf(" | auth.error: unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf(" [x] auth.error: unexpected signing method: %v", token.Header["alg"])
 		}
 		return SECRET, nil
 	}
