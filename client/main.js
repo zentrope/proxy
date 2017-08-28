@@ -243,7 +243,7 @@ class Application extends React.PureComponent {
         e(Div, {onClick: this.launch},
           e(AppIcon, {icon: application.icon}),
           e(Div, {className: "Title"}, application.metadata.name),
-          e(Div, {className: "Context"}, application.context))))
+          e(Div, {className: "Context"}, application.metadata.version))))
   }
 }
 
@@ -305,9 +305,9 @@ class App extends React.PureComponent {
     this.client.setAuthToken(token)
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.client.fetchApplications((apps) => {
-      apps.applications.sort((a, b) => {
-        return  (a.name < b.name) ? 1 : (a.name > b.name) ? -1 : 0
-      })
+      apps.applications.sort((a, b) =>
+        (a.metadata.name > b.metadata.name) ? 1 : (a.metadata.name < b.metadata.name) ? -1 : 0
+      )
       this.setState({apps: apps.applications})
     })
   }
