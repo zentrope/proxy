@@ -42,23 +42,6 @@ func (routes RouteMap) Set(context, url string) {
 	routes[context] = url
 }
 
-func (routes RouteMap) TestConnections() {
-
-	test := func(context, addr string) {
-		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
-		if err != nil {
-			log.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v'\n\t(%v).", context, addr, err)
-			return
-		}
-		conn.Close()
-	}
-
-	for context, addr := range routes {
-		// Run in background to allow for longer timeouts
-		go test(context, addr)
-	}
-}
-
 //-----------------------------------------------------------------------------
 
 type ProxyConfig struct {
@@ -67,6 +50,7 @@ type ProxyConfig struct {
 	Routes         RouteMap
 	RootAppHandler http.Handler
 	StaticHandler  http.Handler
+	Checker        *time.Ticker
 }
 
 func NewProxyServer(appDir, hostDir string) ProxyConfig {
@@ -76,6 +60,23 @@ func NewProxyServer(appDir, hostDir string) ProxyConfig {
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
 		Applications:   NewApplications(appDir),
 		Routes:         NewProxyRoutes(),
+		Checker:        time.NewTicker(15 * time.Second),
+	}
+}
+
+func (proxy ProxyConfig) Start() {
+	log.Println("Starting proxy.")
+
+	server := http.Server{Addr: ":8080", Handler: proxy}
+	go proxy.TestConnectionsContinuously()
+
+	log.Fatal(server.ListenAndServe())
+}
+
+func (proxy ProxyConfig) Stop() {
+	log.Println("Stopping proxy.")
+	if proxy.Checker != nil {
+		proxy.Checker.Stop()
 	}
 }
 
@@ -84,7 +85,26 @@ func (proxy ProxyConfig) AddRoute(context, host string) {
 }
 
 func (proxy ProxyConfig) TestConnections() {
-	proxy.Routes.TestConnections()
+	test := func(context, addr string) {
+		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+		if err != nil {
+			log.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v' (%v).", context, addr, err)
+			return
+		}
+		conn.Close()
+	}
+
+	for context, addr := range proxy.Routes {
+		// Run in background to allow for longer timeouts
+		go test(context, addr)
+	}
+}
+
+func (proxy ProxyConfig) TestConnectionsContinuously() {
+	c := proxy.Checker.C
+	for _ = range c {
+		proxy.TestConnections()
+	}
 }
 
 func (proxy ProxyConfig) IsApi(r *http.Request) bool {

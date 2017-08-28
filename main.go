@@ -20,10 +20,20 @@ package main
 
 import (
 	"log"
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/zentrope/proxy/internal"
 )
+
+func blockUntilShutdownThenDo(fn func()) {
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, os.Kill, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGHUP)
+	v := <-sigChan
+	log.Printf("Signal: %v\n", v)
+	fn()
+}
 
 func main() {
 
@@ -33,13 +43,14 @@ func main() {
 	hostDir := "./client"
 
 	proxy := internal.NewProxyServer(appDir, hostDir)
-	proxy.AddRoute("api", "localhost:10001")
-	proxy.TestConnections()
+	proxy.AddRoute("api", "127.0.0.1:10001")
 
-	server := http.Server{
-		Addr:    ":8080",
-		Handler: proxy,
-	}
+	go proxy.Start()
 
-	log.Fatal(server.ListenAndServe())
+	blockUntilShutdownThenDo(func() {
+		log.Println("Shutdown")
+		proxy.Stop()
+	})
+
+	log.Println("System halt.")
 }
