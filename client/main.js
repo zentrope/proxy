@@ -305,6 +305,9 @@ class App extends React.PureComponent {
     this.client.setAuthToken(token)
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.client.fetchApplications((apps) => {
+      apps.applications.sort((a, b) => {
+        return  (a.name < b.name) ? 1 : (a.name > b.name) ? -1 : 0
+      })
       this.setState({apps: apps.applications})
     })
   }
