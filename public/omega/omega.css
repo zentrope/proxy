@@ -1,0 +1,48 @@
+html, body {
+  font-family: helvetica, sans-serif;
+}
+
+.Nav {
+  border-bottom: 1px solid lightgray;
+  margin-left: 15px;
+  margin-right: 15px;
+  text-align: right;
+}
+
+.WorkArea {
+  width: 600px;
+  margin: 0 auto;
+  margin-top: 50px;
+}
+
+h1 {
+  color: darkred;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border-bottom: 2px solid darkred;
+}
+
+thead tr {
+  border-bottom: 2px solid darkred;
+}
+
+thead tr th {
+  padding: 4px;
+  text-align: left;
+  font-size: 10pt;
+}
+
+tbody tr {
+  border-bottom: 1px dotted lightgray;
+}
+
+tbody tr td {
+  font-size: 11pt;
+  padding: 4px;
+  min-width: 100;
+  text-overflow: auto;
+  white-space: nowrap;
+}
