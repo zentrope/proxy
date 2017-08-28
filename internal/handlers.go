@@ -152,8 +152,7 @@ func (proxy ProxyConfig) HandleBackend(w http.ResponseWriter, r *http.Request) {
 
 	_, err := checkAuth(w, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		log.Println(err)
+		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -174,8 +173,7 @@ func (proxy ProxyConfig) HandleInstalledApps(w http.ResponseWriter, r *http.Requ
 	token, err := checkAuth(w, r)
 	if err != nil {
 		unsetCookie(w)
-		http.Error(w, err.Error(), http.StatusNotFound)
-		log.Println(err)
+		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -204,16 +202,14 @@ func (proxy ProxyConfig) HandleShell(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		log.Println(err)
+		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	proxy.Applications.Reload()
 	json, err := proxy.Applications.AsJSON()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		writeError(w, "apps", "Unable to deserialize app data.")
+		writeError(w, http.StatusInternalServerError, "Unable to deserialize app data.")
 		return
 	}
 
@@ -234,15 +230,14 @@ func (proxy ProxyConfig) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	var params AuthRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println("Can't deserialize auth request:", err)
+		writeError(w, http.StatusBadRequest, "Can't deserialize auth request.")
 		return
 	}
 
 	writeParams := func(auth AuthRequest) {
 		bytes, err := json.Marshal(auth)
 		if err != nil {
-			writeError(w, "auth2", "Unable to serialize auth response.")
+			writeError(w, http.StatusInternalServerError, "Unable to serialize auth response.")
 			return
 		}
 
@@ -259,8 +254,7 @@ func (proxy ProxyConfig) HandleAuth(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !valid {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			log.Println(err)
+			writeError(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 
@@ -272,14 +266,13 @@ func (proxy ProxyConfig) HandleAuth(w http.ResponseWriter, r *http.Request) {
 
 	user, err := proxy.Database.FindUser(params.Email, params.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		log.Println(err)
+		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	token, err := MakeAuthToken(user)
 	if err != nil {
-		writeError(w, "auth", "Can't construct token.")
+		writeError(w, http.StatusInternalServerError, "Can't construct token.")
 		return
 	}
 
@@ -360,24 +353,10 @@ func logRequest(r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
 }
 
-func writeError(w http.ResponseWriter, code, reason string) {
-
-	var doc struct {
-		code   string `json:"code"`
-		reason string `json:"reason"`
-	}
-
-	doc.code = code
-	doc.reason = reason
-
-	bytes, err := json.Marshal(doc)
-	if err != nil {
-		bytes = []byte(fmt.Sprintf(`{code: "unknown", error: "%v"}`, err))
-	}
-
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write(bytes)
+func writeError(w http.ResponseWriter, status int, reason string) {
+	log.Printf("Error: [%v] %v", status, reason)
+	w.WriteHeader(status)
+	w.Write([]byte(reason))
 }
 
 func setAuth(w http.ResponseWriter, token string) {
