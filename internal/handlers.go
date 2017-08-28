@@ -43,10 +43,19 @@ func (routes RouteMap) Set(context, url string) {
 }
 
 func (routes RouteMap) TestConnections() {
-	for k, v := range routes {
-		if !isViableConnection(v) {
-			log.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v'", k, v)
+
+	test := func(context, addr string) {
+		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+		if err != nil {
+			log.Printf("WARNING: ROUTE '/%v' CANNOT CONNECT TO '%v'\n\t(%v).", context, addr, err)
+			return
 		}
+		conn.Close()
+	}
+
+	for context, addr := range routes {
+		// Run in background to allow for longer timeouts
+		go test(context, addr)
 	}
 }
 
@@ -349,19 +358,6 @@ func removePathContext(req *http.Request) string {
 
 func logRequest(r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL.Path)
-}
-
-func isViableConnection(addr string) bool {
-
-	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-	if err != nil {
-		log.Printf("Connection error: %v", err)
-		return false
-	}
-
-	defer conn.Close()
-
-	return true
 }
 
 func writeError(w http.ResponseWriter, code, reason string) {
