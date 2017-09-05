@@ -47,6 +47,9 @@ func main() {
 
 	go proxy.Start()
 
+	appstore := internal.NewAppStore("http://localhost:60001")
+	go appstore.Start()
+
 	blockUntilShutdownThenDo(func() {
 		log.Println("Shutdown")
 		proxy.Stop()
