@@ -31,6 +31,7 @@ import (
 //-----------------------------------------------------------------------------
 
 type Metadata struct {
+	XRN         string `json:"xrn"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Version     string `json:"version"`
