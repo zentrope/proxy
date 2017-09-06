@@ -17,12 +17,9 @@
 package internal
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -30,53 +27,37 @@ import (
 
 //-----------------------------------------------------------------------------
 
-type Metadata struct {
+type InstalledApp struct {
 	XRN         string `json:"xrn"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Version     string `json:"version"`
 	Date        string `json:"date"`
 	Author      string `json:"author"`
-}
-
-type Application struct {
-	Metadata Metadata `json:"metadata"`
-	Icon     string   `json:"icon"`
-	Context  string   `json:"context"`
+	Icon        string `json:"icon"`
+	Context     string `json:"context"`
 }
 
 type Applications struct {
-	Dir  string         `json:"-"`
-	Apps []*Application `json:"applications"`
+	InstalledApps []*InstalledApp `json:"applications"`
+	dir           string
 }
 
 func NewApplications(dir string) *Applications {
 
 	return &Applications{
-		Dir:  dir,
-		Apps: nil,
+		dir:           dir,
+		InstalledApps: nil,
 	}
 }
 
 func (a *Applications) Reload() error {
-	apps, err := findApps(a.Dir)
+	apps, err := findApps(a.dir)
 	if err != nil {
 		return err
 	}
-	a.Apps = apps
+	a.InstalledApps = apps
 	return nil
-}
-
-func (a *Applications) AsJSON() (string, error) {
-	buf := new(bytes.Buffer)
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-
-	if err := enc.Encode(a); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }
 
 //-----------------------------------------------------------------------------
@@ -89,79 +70,44 @@ func trimSvg(svg string) string {
 	return strings.TrimSpace(reg.ReplaceAllString(svg, ""))
 }
 
-func findApps(dir string) ([]*Application, error) {
+func findApps(dir string) ([]*InstalledApp, error) {
 
-	var icons = make(map[string]string, 0)
-	var metadata = make(map[string]Metadata, 0)
-
-	setIcon := func(parent, p string) error {
-		bytes, err := ioutil.ReadFile(p)
-		if err != nil {
-			return err
-		}
-
-		icons[parent] = trimSvg(string(bytes))
-		return nil
-	}
-
-	setMeta := func(parent, p string) error {
-		bytes, err := ioutil.ReadFile(p)
-
-		if err != nil {
-			return err
-		}
-
-		var meta Metadata
-		if err := json.Unmarshal(bytes, &meta); err != nil {
-			return err
-		}
-
-		metadata[parent] = meta
-		return nil
-	}
-
-	visit := func(p string, f os.FileInfo, err error) error {
-		// Fragile because it's possible to find deeply nested svg and
-		// metadata files using this general walker.
-
-		if p == dir {
-			return nil
-		}
-
-		parent := path.Base(path.Dir(p))
-
-		if parent == path.Base(dir) {
-			return nil
-		}
-
-		if path.Base(p) == "icon.svg" {
-			if err := setIcon(parent, p); err != nil {
-				return err
-			}
-		}
-
-		if path.Base(p) == "metadata.js" {
-			if err := setMeta(parent, p); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	apps := make([]*Application, 0)
-
-	err := filepath.Walk(dir, visit)
+	contexts, err := ioutil.ReadDir(dir)
 	if err != nil {
-		return apps, err
+		return nil, err
 	}
 
-	for context, icon := range icons {
-		apps = append(apps, &Application{
-			Icon:     icon,
-			Metadata: metadata[context],
-			Context:  context,
-		})
+	installs := make([]*InstalledApp, 0)
+
+	for _, contextDir := range contexts {
+		appName := contextDir.Name()
+		metadata := filepath.Join(dir, appName, "metadata.js")
+		iconFile := filepath.Join(dir, appName, "icon.svg")
+
+		bytes, err := ioutil.ReadFile(metadata)
+		if err != nil {
+			log.Printf("Unable to read metadata (%v) %v.", appName, err)
+			return nil, err
+		}
+
+		var install InstalledApp
+		if err := json.Unmarshal(bytes, &install); err != nil {
+			log.Printf("Unable to parse metadata (%v) %v.", appName, err)
+			return nil, err
+		}
+
+		iconBytes, err := ioutil.ReadFile(iconFile)
+		if err != nil {
+			log.Printf("Unable to read icon (%v) %v.", appName, err)
+			return nil, err
+		}
+
+		install.Context = appName
+		install.Icon = trimSvg(string(iconBytes))
+
+		installs = append(installs, &install)
 	}
 
-	return apps, nil
+	return installs, nil
+
 }

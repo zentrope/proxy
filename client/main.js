@@ -242,8 +242,8 @@ class Application extends React.PureComponent {
       e(Div, {className: "Application"},
         e(Div, {onClick: this.launch},
           e(AppIcon, {icon: application.icon}),
-          e(Div, {className: "Title"}, application.metadata.name),
-          e(Div, {className: "Context"}, application.metadata.version))))
+          e(Div, {className: "Title"}, application.name),
+          e(Div, {className: "Context"}, application.version))))
   }
 }
 
@@ -306,7 +306,7 @@ class App extends React.PureComponent {
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.client.fetchApplications((apps) => {
       apps.applications.sort((a, b) =>
-        (a.metadata.name > b.metadata.name) ? 1 : (a.metadata.name < b.metadata.name) ? -1 : 0
+        (a.name > b.name) ? 1 : (a.name < b.name) ? -1 : 0
       )
       this.setState({apps: apps.applications})
     })

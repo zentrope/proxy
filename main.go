@@ -41,17 +41,19 @@ func main() {
 
 	appDir := "./public"
 	hostDir := "./client"
+	appStoreUrl := "http://localhost:60001"
 
-	proxy := internal.NewProxyServer(appDir, hostDir)
+	appstore := internal.NewAppStore(appStoreUrl)
+
+	proxy := internal.NewProxyServer(appDir, hostDir, appstore)
 	proxy.AddRoute("api", "127.0.0.1:10001")
 
 	go proxy.Start()
-
-	appstore := internal.NewAppStore("http://localhost:60001")
 	go appstore.Start()
 
 	blockUntilShutdownThenDo(func() {
 		log.Println("Shutdown")
+		appstore.Stop()
 		proxy.Stop()
 	})
 

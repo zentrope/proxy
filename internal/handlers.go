@@ -19,9 +19,9 @@
 package internal
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -46,6 +46,7 @@ func (routes RouteMap) Set(context, url string) {
 
 type ProxyConfig struct {
 	Applications   *Applications
+	AppStore       *AppStore
 	Database       *Database
 	Routes         RouteMap
 	RootAppHandler http.Handler
@@ -53,9 +54,10 @@ type ProxyConfig struct {
 	Checker        *time.Ticker
 }
 
-func NewProxyServer(appDir, hostDir string) ProxyConfig {
+func NewProxyServer(appDir, hostDir string, appStore *AppStore) ProxyConfig {
 	return ProxyConfig{
 		Database:       NewDatabase(),
+		AppStore:       appStore,
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
 		Applications:   NewApplications(appDir),
@@ -159,7 +161,6 @@ func (proxy ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			proxy.HandleInstalledApps(w, r)
 		}
 	}
-
 }
 
 //-----------------------------------------------------------------------------
@@ -221,6 +222,11 @@ func (proxy ProxyConfig) HandleHomeApp(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
+type ShellState struct {
+	Applications []*InstalledApp `json:"applications"`
+	AppStore     []*AppStoreSku  `json:"app_store"`
+}
+
 func (proxy ProxyConfig) HandleShell(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
@@ -230,14 +236,25 @@ func (proxy ProxyConfig) HandleShell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy.Applications.Reload()
-	json, err := proxy.Applications.AsJSON()
-	if err != nil {
+
+	graph := &ShellState{
+		Applications: proxy.Applications.InstalledApps,
+		AppStore:     proxy.AppStore.Skus,
+	}
+
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+
+	if err := enc.Encode(graph); err != nil {
+		log.Printf("ERROR: %v", err)
 		writeError(w, http.StatusInternalServerError, "Unable to deserialize app data.")
 		return
 	}
 
 	setAuth(w, token)
-	fmt.Fprintf(w, json)
+	w.Write(buf.Bytes())
 }
 
 //-----------------------------------------------------------------------------

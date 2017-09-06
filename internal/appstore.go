@@ -24,47 +24,47 @@ import (
 	"time"
 )
 
-type App struct {
+type AppStoreSku struct {
 	XRN         string `json:"xrn"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Version     string `json:"version"`
 	Date        string `json:"date"`
 	Author      string `json:"author"`
-	Context     string `json:"context"`
-	DownloadURL string `json:"download_url"`
+	Context     string `json:"-"`
+	DownloadURL string `json:"-"`
 }
 
 type AppStore struct {
-	StoreURL string
-	Apps     []*App
-	Clock    *time.Ticker
+	Skus     []*AppStoreSku
+	storeURL string
+	clock    *time.Ticker
 }
 
 func NewAppStore(storeUrl string) *AppStore {
 	return &AppStore{
-		StoreURL: storeUrl,
-		Clock:    time.NewTicker(17 * time.Second),
+		storeURL: storeUrl,
+		clock:    time.NewTicker(17 * time.Second),
 	}
 }
 
 func (store *AppStore) Start() {
-	log.Println("Starting appstore fetcher.")
+	log.Printf("Starting appstore fetcher [%v].", store.storeURL)
 	go store.fetch() // start off immediately
 	go store.fetchStoreDataContinuously()
 }
 
 func (store *AppStore) Stop() {
 	log.Println("Stopping appstore fetcher.")
-	if store.Clock != nil {
-		store.Clock.Stop()
+	if store.clock != nil {
+		store.clock.Stop()
 	}
 }
 
 //-----------------------------------------------------------------------------
 
 func (store *AppStore) fetchStoreDataContinuously() {
-	c := store.Clock.C
+	c := store.clock.C
 	for _ = range c {
 		if err := store.fetch(); err != nil {
 			log.Printf("WARNING (store): %v", err)
@@ -73,7 +73,7 @@ func (store *AppStore) fetchStoreDataContinuously() {
 }
 
 func (store *AppStore) fetch() error {
-	resp, err := http.Get(store.StoreURL + "/catalog")
+	resp, err := http.Get(store.storeURL + "/catalog")
 	if err != nil {
 		return err
 	}
@@ -84,10 +84,10 @@ func (store *AppStore) fetch() error {
 		return err
 	}
 
-	var apps []*App
+	var apps []*AppStoreSku
 	if err := json.Unmarshal(body, &apps); err != nil {
 		return err
 	}
-	store.Apps = apps
+	store.Skus = apps
 	return nil
 }
