@@ -42,6 +42,7 @@ clean: ## Clean build artifacts (if any)
 	rm -f proxy
 	rm -f backend
 	rm -f cmd/backend/backend
+	rm -rf cmd/store/deploy
 	rm -rf public/beta
 	rm -rf public/ten-forward
 	rm -f  public/*.zip
