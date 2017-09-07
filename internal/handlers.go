@@ -284,10 +284,24 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go proxy.commander.Invoke(token, command.Command, command.Id)
+	log.Println(" commander starting")
+
+	result := <-proxy.commander.Invoke(token, command.Command, command.Id)
 
 	setAuth(w, token)
-	w.WriteHeader(200)
+
+	switch result.Code {
+
+	case CommandOk:
+		log.Printf(" command completed successfully.")
+		w.WriteHeader(200)
+
+	default:
+		log.Printf(" command completed with an error %v", result.Reason)
+		w.WriteHeader(500)
+
+	}
+
 }
 
 //-----------------------------------------------------------------------------

@@ -295,7 +295,6 @@ class LaunchPad extends React.PureComponent {
 class Appstore extends React.PureComponent {
   render() {
     const { apps, onClick } = this.props
-    console.log(apps)
     return (
       e(WorkArea, {},
         e(H1, {}, "App Store"),
@@ -472,6 +471,7 @@ class App extends React.PureComponent {
     this.onLogout = this.onLogout.bind(this)
     this.onLogin = this.onLogin.bind(this)
     this.onCommand = this.onCommand.bind(this)
+    this.doFetch = this.doFetch.bind(this)
   }
 
   onLogout() {
@@ -485,6 +485,10 @@ class App extends React.PureComponent {
     localStorage.setItem("authToken", token)
     this.client.setAuthToken(token)
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
+    this.doFetch()
+  }
+
+  doFetch() {
     this.client.fetchApplications((apps) => {
       let sorter = (a, b) => (a.name > b.name) ? 1 : (a.name < b.name) ? -1 : 0
       apps.applications.sort(sorter)
@@ -494,11 +498,27 @@ class App extends React.PureComponent {
   }
 
   onCommand(command) {
-    let cs = JSON.stringify(command)
-    this.client.sendCommand(command,
-                            () => { console.log('ok -> ' + cs)},
-                            (err) => { console.log("Command rebuffed.", cs, err) })
+    // For now, the contract is that a post to the command route
+    // will block until the command is completed. At that time,
+    // we need to refresh the state in case something new resulted
+    // from the command. In The Future: this would be accomplished
+    // in a more general way with a web-socket channel for push
+    // notifications.
 
+    let cs = JSON.stringify(command)
+
+    let success = () => {
+      console.log('cmd.ok')
+      this.doFetch()
+    }
+
+    let failure = (err) => {
+      console.log("cmd.error -> ", err)
+      this.doFetch()
+    }
+
+    console.log("Invoking command: " + cs)
+    this.client.sendCommand(command, success, failure)
   }
 
   componentDidMount() {

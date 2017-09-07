@@ -18,11 +18,26 @@
 
 package internal
 
-import "log"
+import (
+	"log"
+	"time"
+)
+
+type CommandCode int
+
+type CommandResult struct {
+	Code   CommandCode
+	Reason string
+}
 
 type CommandProcessor struct {
 	appStore *AppStore
 }
+
+const (
+	CommandOk    = CommandCode(iota)
+	CommandError = iota
+)
 
 func NewCommandProcessor(appStore *AppStore) *CommandProcessor {
 	return &CommandProcessor{
@@ -30,13 +45,29 @@ func NewCommandProcessor(appStore *AppStore) *CommandProcessor {
 	}
 }
 
-func (cp *CommandProcessor) Invoke(clientId, command, oid string) {
-	log.Printf("Invoking %v on %v on behalf of %v.", command, oid, clientId)
+func (cp *CommandProcessor) Invoke(clientId, command, oid string) chan CommandResult {
+	out := make(chan CommandResult)
+	go func() {
+		defer close(out)
+		time.Sleep(2 * time.Second)
 
-	sku, err := cp.appStore.Find(oid)
-	if err != nil {
-		log.Println(err)
-	}
+		sku, err := cp.appStore.Find(oid)
+		if err != nil {
+			log.Println(err)
+			out <- badResult(err.Error())
+			return
+		}
 
-	log.Printf("Found app %#v", sku)
+		log.Printf("Found app %#v", sku)
+		out <- goodResult()
+	}()
+	return out
+}
+
+func goodResult() CommandResult {
+	return CommandResult{Code: CommandOk, Reason: "Ok"}
+}
+
+func badResult(reason string) CommandResult {
+	return CommandResult{Code: CommandError, Reason: reason}
 }
