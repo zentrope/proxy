@@ -44,7 +44,7 @@ func (routes RouteMap) Set(context, url string) {
 
 //-----------------------------------------------------------------------------
 
-type ProxyConfig struct {
+type ProxyServer struct {
 	Applications   *Applications
 	AppStore       *AppStore
 	Database       *Database
@@ -54,8 +54,8 @@ type ProxyConfig struct {
 	Checker        *time.Ticker
 }
 
-func NewProxyServer(appDir, hostDir string, appStore *AppStore) ProxyConfig {
-	return ProxyConfig{
+func NewProxyServer(appDir, hostDir string, appStore *AppStore) ProxyServer {
+	return ProxyServer{
 		Database:       NewDatabase(),
 		AppStore:       appStore,
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
@@ -66,7 +66,7 @@ func NewProxyServer(appDir, hostDir string, appStore *AppStore) ProxyConfig {
 	}
 }
 
-func (proxy ProxyConfig) Start() {
+func (proxy ProxyServer) Start() {
 	log.Println("Starting proxy.")
 
 	server := http.Server{Addr: ":8080", Handler: proxy}
@@ -75,18 +75,18 @@ func (proxy ProxyConfig) Start() {
 	log.Fatal(server.ListenAndServe())
 }
 
-func (proxy ProxyConfig) Stop() {
+func (proxy ProxyServer) Stop() {
 	log.Println("Stopping proxy.")
 	if proxy.Checker != nil {
 		proxy.Checker.Stop()
 	}
 }
 
-func (proxy ProxyConfig) AddRoute(context, host string) {
+func (proxy ProxyServer) AddRoute(context, host string) {
 	proxy.Routes.Set(context, host)
 }
 
-func (proxy ProxyConfig) TestConnections() {
+func (proxy ProxyServer) TestConnections() {
 	test := func(context, addr string) {
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err != nil {
@@ -102,18 +102,18 @@ func (proxy ProxyConfig) TestConnections() {
 	}
 }
 
-func (proxy ProxyConfig) TestConnectionsContinuously() {
+func (proxy ProxyServer) TestConnectionsContinuously() {
 	c := proxy.Checker.C
 	for _ = range c {
 		proxy.TestConnections()
 	}
 }
 
-func (proxy ProxyConfig) IsApi(r *http.Request) bool {
+func (proxy ProxyServer) IsApi(r *http.Request) bool {
 	return proxy.Routes[getPathContext(r)] != ""
 }
 
-func (proxy ProxyConfig) MakeContextDirector() func(req *http.Request) {
+func (proxy ProxyServer) MakeContextDirector() func(req *http.Request) {
 	return func(req *http.Request) {
 		host := req.Host
 		path := req.URL.Path
@@ -131,7 +131,7 @@ func (proxy ProxyConfig) MakeContextDirector() func(req *http.Request) {
 	}
 }
 
-func (proxy ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logRequest(r)
 
 	if r.Method == "HEAD" || r.Method == "OPTIONS" {
@@ -168,14 +168,14 @@ func (proxy ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyConfig) HandleLogout(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	unsetCookie(w)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyConfig) HandleBackend(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleBackend(w http.ResponseWriter, r *http.Request) {
 
 	_, err := checkAuth(w, r)
 	if err != nil {
@@ -196,7 +196,7 @@ func (proxy ProxyConfig) HandleBackend(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyConfig) HandleInstalledApps(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleInstalledApps(w http.ResponseWriter, r *http.Request) {
 	token, err := checkAuth(w, r)
 	if err != nil {
 		unsetCookie(w)
@@ -210,7 +210,7 @@ func (proxy ProxyConfig) HandleInstalledApps(w http.ResponseWriter, r *http.Requ
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyConfig) HandleHomeApp(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleHomeApp(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	proxy.RootAppHandler.ServeHTTP(w, r)
@@ -230,7 +230,7 @@ type ShellState struct {
 	AppStore     []*AppStoreSku  `json:"app_store"`
 }
 
-func (proxy ProxyConfig) HandleShell(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
@@ -267,7 +267,7 @@ type CommandRequest struct {
 	Id      string `json:"id"`
 }
 
-func (proxy ProxyConfig) HandleCommand(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
@@ -295,7 +295,7 @@ type AuthRequest struct {
 	Token    string `json:"token"`
 }
 
-func (proxy ProxyConfig) HandleAuth(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleAuth(w http.ResponseWriter, r *http.Request) {
 
 	var params AuthRequest
 
