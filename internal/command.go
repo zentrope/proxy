@@ -58,8 +58,12 @@ func (cp *CommandProcessor) Invoke(clientId, command, oid string) chan CommandRe
 		defer close(out)
 
 		switch command {
+
 		case "install":
 			out <- cp.install(clientId, oid)
+
+		case "uninstall":
+			out <- cp.uninstall(clientId, oid)
 
 		default:
 			out <- badResult(fmt.Sprintf("Unknown command: %v", command))
@@ -71,6 +75,26 @@ func (cp *CommandProcessor) Invoke(clientId, command, oid string) chan CommandRe
 }
 
 //-----------------------------------------------------------------------------
+
+func (cp *CommandProcessor) uninstall(clientId, oid string) CommandResult {
+	sku, err := cp.appStore.Find(oid)
+	if err != nil {
+		return badResult(err.Error())
+	}
+
+	publicDir, err := filepath.Abs(cp.appDir)
+	if err != nil {
+		return badResult(err.Error())
+	}
+
+	contextDir := filepath.Join(publicDir, sku.Context)
+
+	if err := os.RemoveAll(contextDir); err != nil {
+		return badResult(err.Error())
+	}
+
+	return goodResult()
+}
 
 func (cp *CommandProcessor) install(clientId, oid string) CommandResult {
 	sku, err := cp.appStore.Find(oid)

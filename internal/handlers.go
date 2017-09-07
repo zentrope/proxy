@@ -243,13 +243,18 @@ func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
 
 	proxy.Applications.Reload()
 
-	graph := &ShellState{
-		Applications: proxy.Applications.InstalledApps,
-		AppStore:     proxy.AppStore.Skus(),
+	installs := proxy.Applications.AppMap()
+	skus := proxy.AppStore.Skus()
+
+	// Flag already installed SKUs.
+	for i, sku := range skus {
+		skus[i].IsInstalled = installs[sku.XRN] != nil
 	}
 
-	// TODO: If there's overlap betweep Installs and Skus, update
-	//       SKUs to show app is installed.
+	graph := &ShellState{
+		Applications: proxy.Applications.InstalledApps,
+		AppStore:     skus,
+	}
 
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)

@@ -51,6 +51,15 @@ func NewApplications(dir string) *Applications {
 	}
 }
 
+func (a *Applications) AppMap() map[string]*InstalledApp {
+	result := make(map[string]*InstalledApp, 0)
+	for _, app := range a.InstalledApps {
+		result[app.XRN] = app
+	}
+
+	return result
+}
+
 func (a *Applications) Reload() error {
 	apps, err := findApps(a.dir)
 	if err != nil {

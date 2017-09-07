@@ -295,6 +295,21 @@ class LaunchPad extends React.PureComponent {
 class Appstore extends React.PureComponent {
   render() {
     const { apps, onClick } = this.props
+
+    let remover = (a) =>
+      () => {
+        if (window.confirm("Remove '" + a.name + "' app from launchpad?")) {
+          onClick({cmd: 'uninstall', id: a.xrn})
+        }
+      }
+
+    let installer = (a) =>
+      () => {
+        if (window.confirm("Install '" + a.name + "' app?")) {
+          onClick({cmd: 'install', id: a.xrn})
+        }
+      }
+
     return (
       e(WorkArea, {},
         e(H1, {}, "App Store"),
@@ -307,7 +322,7 @@ class Appstore extends React.PureComponent {
                 e(Th, {width: "10%"}, "Version"),
                 e(Th, {width: "10%"}, "Date"),
                 e(Th, {}, "Description"),
-                e(Th, {width: "10%", className: 'Right'}, "Option"))),
+                e(Th, {width: "10%", className: 'Center'}, "Option"))),
             e(Tbody, {},
               apps.map(a =>
                 e(Tr, {key: a.xrn},
@@ -315,10 +330,12 @@ class Appstore extends React.PureComponent {
                   e(Td, {}, a.version),
                   e(Td, {}, a.date),
                   e(Td, {}, a.description),
-                  e(Td, {className: 'Right'},
-                    e(Button,
-                      {onClick: () => onClick({cmd: 'install', id: a.xrn})},
-                       "Install")) ))))))
+                  e(Td, {className: 'Center'},
+                    a.is_installed ? (
+                      e(Button, {onClick: remover(a)}, "Remove")
+                    ) : (
+                      e(Button, {onClick: installer(a)}, "Install"))
+                  )))))))
     )
   }
 }

@@ -310,6 +310,10 @@ path {
   padding-right: 8px;
 }
 
+.Tabular .Center {
+  text-align: center;
+}
+
 /*---------------------------------------------------------------------------*/
 
 .MenuBar {
