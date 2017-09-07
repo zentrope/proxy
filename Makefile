@@ -42,6 +42,9 @@ clean: ## Clean build artifacts (if any)
 	rm -f proxy
 	rm -f backend
 	rm -f cmd/backend/backend
+	rm -rf public/beta
+	rm -rf public/gamma
+	rm -f  public/*.zip
 
 dist-clean: clean ## Clean everything, including vendor.
 	rm -rf vendor

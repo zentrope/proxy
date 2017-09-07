@@ -248,6 +248,9 @@ func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
 		AppStore:     proxy.AppStore.Skus(),
 	}
 
+	// TODO: If there's overlap betweep Installs and Skus, update
+	//       SKUs to show app is installed.
+
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
@@ -284,8 +287,7 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(" commander starting")
-
+	log.Printf("- invoking command '%v'", command.Command)
 	result := <-proxy.commander.Invoke(token, command.Command, command.Id)
 
 	setAuth(w, token)
@@ -293,11 +295,11 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 	switch result.Code {
 
 	case CommandOk:
-		log.Printf(" command completed successfully.")
+		log.Printf("- command completed successfully.")
 		w.WriteHeader(200)
 
 	default:
-		log.Printf(" command completed with an error %v", result.Reason)
+		log.Printf("- command completed with an error %v", result.Reason)
 		w.WriteHeader(500)
 
 	}

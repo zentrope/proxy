@@ -417,7 +417,7 @@ class MainPhase extends React.PureComponent {
       {name: "Sign out", event: "sign-out"}
     ]
 
-    this.state = {mode: 'app-store'}
+    this.state = {mode: 'launch-pad'}
     this.handleMenu = this.handleMenu.bind(this)
   }
 

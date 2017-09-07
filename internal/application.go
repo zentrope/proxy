@@ -80,6 +80,11 @@ func findApps(dir string) ([]*InstalledApp, error) {
 	installs := make([]*InstalledApp, 0)
 
 	for _, contextDir := range contexts {
+
+		if !contextDir.IsDir() {
+			continue
+		}
+
 		appName := contextDir.Name()
 		metadata := filepath.Join(dir, appName, "metadata.js")
 		iconFile := filepath.Join(dir, appName, "icon.svg")

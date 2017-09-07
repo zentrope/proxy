@@ -44,7 +44,7 @@ func main() {
 	appStoreUrl := "http://localhost:60001"
 
 	appstore := internal.NewAppStore(appStoreUrl)
-	commander := internal.NewCommandProcessor(appstore)
+	commander := internal.NewCommandProcessor(appDir, appstore)
 
 	proxy := internal.NewProxyServer(appDir, hostDir, appstore, commander)
 	proxy.AddRoute("api", "127.0.0.1:10001")

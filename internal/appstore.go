@@ -34,6 +34,7 @@ type AppStoreSku struct {
 	Author      string `json:"author"`
 	Context     string `json:"context,omitempty"`
 	DownloadURL string `json:"download_url,omitempty"`
+	IsInstalled bool   `json:"is_installed"`
 }
 
 type AppStore struct {
