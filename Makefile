@@ -43,7 +43,7 @@ clean: ## Clean build artifacts (if any)
 	rm -f backend
 	rm -f cmd/backend/backend
 	rm -rf public/beta
-	rm -rf public/gamma
+	rm -rf public/ten-forward
 	rm -f  public/*.zip
 
 dist-clean: clean ## Clean everything, including vendor.

@@ -3,3 +3,5 @@
 /backend
 vendor/*
 /cmd/store/deploy
+/public/beta
+/public/ten-forward
