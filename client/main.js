@@ -18,8 +18,10 @@ const e = React.createElement
 const Div='div'
 const Section='section'
 const H1='h1'
+const P='p'
 const Input='input'
 const Button='button'
+const Img='img'
 
 //-----------------------------------------------------------------------------
 
@@ -169,7 +171,7 @@ class LoginPhase extends React.PureComponent {
     return (
       e(Section, {className: "LoginForm"},
         e(Section, {className: "LoginPanel"},
-          e(H1, {}, "Sign in to the Application Shell"),
+          e(H1, {}, "Sign in to the Launchpad"),
           e(Div, {className: "Error"}, error),
           e(Div, {className: "Control"}, submit),
           e(Div, {className: "Widgets"},
@@ -197,16 +199,23 @@ class LoginPhase extends React.PureComponent {
 
 //-----------------------------------------------------------------------------
 
+class WorkArea extends React.PureComponent {
+  render() {
+    return (
+      e(Section, {className: "WorkArea"},
+        this.props.children))
+  }
+}
+
 class TitleBar extends React.PureComponent {
 
   render() {
-    const { name, onLogout } = this.props
+    const { name } = this.props
 
     return (
       e(Section, {className: "TitleBar"},
-        e(Div, {className: "Name"}, name),
-        e(Div, {className: "Buttons"},
-          e(Button, {onClick: onLogout}, "Sign out"))))
+        e(Div, {className: "Name"}, name))
+    )
   }
 }
 
@@ -253,20 +262,149 @@ class LaunchPad extends React.PureComponent {
     const { apps } = this.props
 
     return (
-      e(Section, {className: "LaunchPad"},
-        apps.map(a => e(Application, {key: a.context, application: a}))))
+      e(WorkArea, {},
+        e(Section, {className: "LaunchPad"},
+          apps.map(a => e(Application, {key: a.context, application: a})))))
+  }
+}
+
+class Appstore extends React.PureComponent {
+  render() {
+    return (
+      e(WorkArea, {},
+        e(Section, {className: "AppStore"},
+          e(H1, {}, "App Store"),
+          e(P, {}, "This is an admin function.")))
+    )
+  }
+}
+
+// This nonsense is so we can load SVG direct and style it
+// via an external style sheet. Eh. Wanted to see if it worked.
+const loadSvg = (file, callback) => {
+  let req = {
+    method: 'GET',
+    headers: {"Authorization": "Bearer " + localStorage.getItem("authToken")},
+    credentials: 'include'
+  }
+
+  fetch(file, req)
+    .then(resp => resp.text())
+    .then(svg => callback(svg))
+    .catch(err => console.log(err))
+}
+
+class Icon extends React.PureComponent {
+
+  constructor(props) {
+    super(props)
+
+    this.state = { icon: "&bullet;" }
+  }
+
+  componentDidMount() {
+
+    const icons = {
+      "app-store": "appstore.svg",
+      "launch-pad": "launchpad.svg",
+      "sign-out": "sign-out.svg"
+    }
+
+    loadSvg(icons[this.props.code], svg => this.setState({icon: svg}))
+  }
+
+  render() {
+    const { code } = this.props
+    const { icon } = this.state
+
+    return (
+      e(Div, {dangerouslySetInnerHTML: {__html: icon}})
+    )
+  }
+}
+
+class MenuItem extends React.PureComponent {
+  render() {
+    const { name, event, onClick, selected } = this.props
+
+    const doit = (e) =>
+      onClick(e.target.getAttribute("name"))
+
+    const className = selected === event ? "MenuItem Focus" : "MenuItem"
+
+    return (
+      e(Div, {className: className, name: event, onClick: doit},
+        e(Div, {className: "Icon"}, e(Icon, {code: event})),
+        e(Div, {className: "Name"}, name))
+      )
+  }
+}
+
+class MenuBar extends React.PureComponent {
+
+  render() {
+    const { onClick, selected } = this.props;
+
+    const menus = [
+      {name: "Home", event: "launch-pad"},
+      {name: "App Store", event: "app-store"},
+      {name: "Sign out", event: "sign-out"}
+    ]
+
+    let onItemClick = (event) => {
+      onClick(event)
+    }
+
+    return (
+      e(Section, {className: "MenuBar"},
+        menus.map(m => e(MenuItem, {
+          key: m.name,
+          name: m.name,
+          event: m.event,
+          onClick: onItemClick,
+          selected: selected
+        })))
+    )
   }
 }
 
 class MainPhase extends React.PureComponent {
 
+  constructor(props) {
+    super(props)
+
+    this.state = {mode: 'launch-pad'}
+    this.handleMenu = this.handleMenu.bind(this)
+  }
+
+  handleMenu(event) {
+    if (event === 'sign-out') {
+      if (window.confirm("Log out of the application?")) {
+        this.props.onLogout()
+      }
+      return
+    }
+    this.setState({mode: event})
+  }
+
   render() {
+    const { mode } = this.state
     const { onLogout, apps } = this.props
+
+    let toggle = () =>
+      this.setState({'mode': mode === 'launch-pad' ? 'app-store' : 'launch-pad'})
+
+    let view = mode === 'launch-pad' ?
+               e(LaunchPad, {apps: apps}) :
+               e(Appstore, {onDone: toggle})
 
     return (
       e(Section, {className: "ApplicationShell"},
-        e(TitleBar, {name: "Application Shell", onLogout: onLogout}),
-        e(LaunchPad, {apps: apps})))
+        e(TitleBar, {name: "Launch Pad"}),
+        e(MenuBar, {onClick: this.handleMenu, selected: mode}),
+        view,
+        e(Section, {className: 'Footer'})
+      ))
   }
 }
 
@@ -352,7 +490,7 @@ const render = () =>
     document.getElementById('root'))
 
 const main = () => {
-  console.log("Welcome to the Application Shell")
+  console.log("Welcome to the Launch Pad")
   render()
 }
 
