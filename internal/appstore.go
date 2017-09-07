@@ -18,6 +18,7 @@ package internal
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -31,12 +32,12 @@ type AppStoreSku struct {
 	Version     string `json:"version"`
 	Date        string `json:"date"`
 	Author      string `json:"author"`
-	Context     string `json:"-"`
-	DownloadURL string `json:"-"`
+	Context     string `json:"context,omitempty"`
+	DownloadURL string `json:"download_url,omitempty"`
 }
 
 type AppStore struct {
-	Skus     []*AppStoreSku
+	skus     []*AppStoreSku
 	storeURL string
 	clock    *time.Ticker
 }
@@ -59,6 +60,30 @@ func (store *AppStore) Stop() {
 	if store.clock != nil {
 		store.clock.Stop()
 	}
+}
+
+func (store *AppStore) Find(xrn string) (*AppStoreSku, error) {
+	for _, sku := range store.skus {
+		if sku.XRN == xrn {
+			return sku, nil
+		}
+	}
+	return nil, fmt.Errorf("App '%s' not found.", xrn)
+}
+
+func (store *AppStore) Skus() []*AppStoreSku {
+	// Return skus, but remove some of the data
+
+	skus := make([]*AppStoreSku, 0)
+	for _, s := range store.skus {
+		var newSku AppStoreSku
+		newSku = *s
+		newSku.Context = ""
+		newSku.DownloadURL = ""
+		skus = append(skus, &newSku)
+	}
+
+	return skus
 }
 
 //-----------------------------------------------------------------------------
@@ -88,6 +113,6 @@ func (store *AppStore) fetch() error {
 	if err := json.Unmarshal(body, &apps); err != nil {
 		return err
 	}
-	store.Skus = apps
+	store.skus = apps
 	return nil
 }

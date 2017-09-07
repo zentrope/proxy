@@ -52,12 +52,15 @@ type ProxyServer struct {
 	RootAppHandler http.Handler
 	StaticHandler  http.Handler
 	Checker        *time.Ticker
+	commander      *CommandProcessor
 }
 
-func NewProxyServer(appDir, hostDir string, appStore *AppStore) ProxyServer {
+func NewProxyServer(appDir, hostDir string, appStore *AppStore,
+	commander *CommandProcessor) ProxyServer {
 	return ProxyServer{
 		Database:       NewDatabase(),
 		AppStore:       appStore,
+		commander:      commander,
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
 		Applications:   NewApplications(appDir),
@@ -242,7 +245,7 @@ func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
 
 	graph := &ShellState{
 		Applications: proxy.Applications.InstalledApps,
-		AppStore:     proxy.AppStore.Skus,
+		AppStore:     proxy.AppStore.Skus(),
 	}
 
 	buf := new(bytes.Buffer)
@@ -281,7 +284,7 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("%#v", command)
+	go proxy.commander.Invoke(token, command.Command, command.Id)
 
 	setAuth(w, token)
 	w.WriteHeader(200)

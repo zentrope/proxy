@@ -295,6 +295,7 @@ class LaunchPad extends React.PureComponent {
 class Appstore extends React.PureComponent {
   render() {
     const { apps, onClick } = this.props
+    console.log(apps)
     return (
       e(WorkArea, {},
         e(H1, {}, "App Store"),
@@ -493,11 +494,10 @@ class App extends React.PureComponent {
   }
 
   onCommand(command) {
-    console.log("Command '" + JSON.stringify(command) + "' not implemented.")
-
+    let cs = JSON.stringify(command)
     this.client.sendCommand(command,
-                            () => { console.log("Command sent.") },
-                            (err) => { console.log("Command rebuffed.", err) })
+                            () => { console.log('ok -> ' + cs)},
+                            (err) => { console.log("Command rebuffed.", cs, err) })
 
   }
 
