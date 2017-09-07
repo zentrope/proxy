@@ -151,6 +151,9 @@ func (proxy ProxyConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "shell":
 		proxy.HandleShell(w, r)
 
+	case "command":
+		proxy.HandleCommand(w, r)
+
 	case "":
 		proxy.HandleHomeApp(w, r)
 
@@ -255,6 +258,33 @@ func (proxy ProxyConfig) HandleShell(w http.ResponseWriter, r *http.Request) {
 
 	setAuth(w, token)
 	w.Write(buf.Bytes())
+}
+
+//-----------------------------------------------------------------------------
+
+type CommandRequest struct {
+	Command string `json:"cmd"`
+	Id      string `json:"id"`
+}
+
+func (proxy ProxyConfig) HandleCommand(w http.ResponseWriter, r *http.Request) {
+
+	token, err := checkAuth(w, r)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	var command CommandRequest
+	if err := json.NewDecoder(r.Body).Decode(&command); err != nil {
+		writeError(w, http.StatusBadRequest, "Can't deserialize command request.")
+		return
+	}
+
+	log.Printf("%#v", command)
+
+	setAuth(w, token)
+	w.WriteHeader(200)
 }
 
 //-----------------------------------------------------------------------------

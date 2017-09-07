@@ -43,6 +43,8 @@ class Client {
 
     this.checkStatus = this.checkStatus.bind(this)
     this.errorDelegate = this.errorDelegate.bind(this)
+
+    this.__authorize = this.__authorize.bind(this)
   }
 
   setAuthToken(token) {
@@ -63,6 +65,12 @@ class Client {
     console.error(err)
   }
 
+  __authorize(request) {
+    request.headers = { "Authorization": "Bearer " + this.authToken }
+    request.credentials = 'include'
+    return request
+  }
+
   login(user, pass, success, failure) {
     let query = { method: 'POST', body: JSON.stringify({"email": user, "password": pass})}
     fetch(this.url + "/auth/", query)
@@ -81,10 +89,20 @@ class Client {
       .catch(err => failure(err))
   }
 
+  sendCommand(command, success, failure) {
+    let query = this.__authorize({
+      method: 'POST',
+      body: JSON.stringify(command)
+    })
+
+    fetch(this.url + '/command', query)
+      .then(res => this.checkStatus(res))
+      .then(res =>  { if (success) success('ok') })
+      .catch(err => { if (failure) failure(err) })
+  }
+
   fetchApplications(callback) {
-    let query = {
-      method: 'GET',
-      headers: { "Authorization": "Bearer " + this.authToken } }
+    let query = this.__authorize({method: 'GET'})
     fetch(this.url + "/shell", query)
       .then(res => this.checkStatus(res))
       .then(res => res.json())
@@ -401,7 +419,6 @@ class MainPhase extends React.PureComponent {
 
     this.state = {mode: 'app-store'}
     this.handleMenu = this.handleMenu.bind(this)
-    this.handleCommand = this.handleCommand.bind(this)
   }
 
   handleMenu(event) {
@@ -414,17 +431,13 @@ class MainPhase extends React.PureComponent {
     this.setState({mode: event})
   }
 
-  handleCommand(event) {
-    console.log("Command '" + JSON.stringify(event) + "' not implemented.")
-  }
-
   render() {
     const { mode } = this.state
-    const { onLogout, apps } = this.props
+    const { onLogout, onCommand, apps } = this.props
 
     let view = mode === 'launch-pad' ?
                e(LaunchPad, {apps: apps.applications}) :
-               e(Appstore, {apps: apps.app_store, onClick: this.handleCommand})
+               e(Appstore, {apps: apps.app_store, onClick: onCommand})
 
     return (
       e(Section, {className: "ApplicationShell"},
@@ -457,6 +470,7 @@ class App extends React.PureComponent {
 
     this.onLogout = this.onLogout.bind(this)
     this.onLogin = this.onLogin.bind(this)
+    this.onCommand = this.onCommand.bind(this)
   }
 
   onLogout() {
@@ -476,6 +490,15 @@ class App extends React.PureComponent {
       apps.app_store.sort(sorter)
       this.setState({apps: apps})
     })
+  }
+
+  onCommand(command) {
+    console.log("Command '" + JSON.stringify(command) + "' not implemented.")
+
+    this.client.sendCommand(command,
+                            () => { console.log("Command sent.") },
+                            (err) => { console.log("Command rebuffed.", err) })
+
   }
 
   componentDidMount() {
@@ -503,7 +526,8 @@ class App extends React.PureComponent {
         return (e(LoginPhase, {login: this.onLogin, client: this.client}))
 
       case LOGGED_IN:
-        return (e(MainPhase, {onLogout: this.onLogout, apps: apps}))
+        return (e(MainPhase, {onLogout: this.onLogout, onCommand: this.onCommand,
+                              apps: apps}))
 
       default:
         return (e(LoadingPhase))
