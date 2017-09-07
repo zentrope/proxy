@@ -22,6 +22,12 @@ const P='p'
 const Input='input'
 const Button='button'
 const Img='img'
+const Table='table'
+const Tbody='tbody'
+const Thead='thead'
+const Tr='tr'
+const Th='th'
+const Td='td'
 
 //-----------------------------------------------------------------------------
 
@@ -270,11 +276,31 @@ class LaunchPad extends React.PureComponent {
 
 class Appstore extends React.PureComponent {
   render() {
+    const { apps, onClick } = this.props
     return (
       e(WorkArea, {},
-        e(Section, {className: "AppStore"},
-          e(H1, {}, "App Store"),
-          e(P, {}, "This is an admin function.")))
+        e(H1, {}, "App Store"),
+        e(P, {}, "This is an admin function."),
+        e(Div, {className: 'Tabular'},
+          e(Table, {},
+            e(Thead, {},
+              e(Tr, {},
+                e(Th, {width: "15%"}, "Name"),
+                e(Th, {width: "10%"}, "Version"),
+                e(Th, {width: "10%"}, "Date"),
+                e(Th, {}, "Description"),
+                e(Th, {width: "10%", className: 'Right'}, "Option"))),
+            e(Tbody, {},
+              apps.map(a =>
+                e(Tr, {key: a.xrn},
+                  e(Td, {}, a.name),
+                  e(Td, {}, a.version),
+                  e(Td, {}, a.date),
+                  e(Td, {}, a.description),
+                  e(Td, {className: 'Right'},
+                    e(Button,
+                      {onClick: () => onClick({cmd: 'install', id: a.xrn})},
+                       "Install")) ))))))
     )
   }
 }
@@ -343,13 +369,7 @@ class MenuItem extends React.PureComponent {
 class MenuBar extends React.PureComponent {
 
   render() {
-    const { onClick, selected } = this.props;
-
-    const menus = [
-      {name: "Home", event: "launch-pad"},
-      {name: "App Store", event: "app-store"},
-      {name: "Sign out", event: "sign-out"}
-    ]
+    const { onClick, selected, menus } = this.props;
 
     let onItemClick = (event) => {
       onClick(event)
@@ -373,8 +393,15 @@ class MainPhase extends React.PureComponent {
   constructor(props) {
     super(props)
 
-    this.state = {mode: 'launch-pad'}
+    this.menus = [
+      {name: "Home", event: "launch-pad"},
+      {name: "App Store", event: "app-store"},
+      {name: "Sign out", event: "sign-out"}
+    ]
+
+    this.state = {mode: 'app-store'}
     this.handleMenu = this.handleMenu.bind(this)
+    this.handleCommand = this.handleCommand.bind(this)
   }
 
   handleMenu(event) {
@@ -387,21 +414,22 @@ class MainPhase extends React.PureComponent {
     this.setState({mode: event})
   }
 
+  handleCommand(event) {
+    console.log("Command '" + JSON.stringify(event) + "' not implemented.")
+  }
+
   render() {
     const { mode } = this.state
     const { onLogout, apps } = this.props
 
-    let toggle = () =>
-      this.setState({'mode': mode === 'launch-pad' ? 'app-store' : 'launch-pad'})
-
     let view = mode === 'launch-pad' ?
-               e(LaunchPad, {apps: apps}) :
-               e(Appstore, {onDone: toggle})
+               e(LaunchPad, {apps: apps.applications}) :
+               e(Appstore, {apps: apps.app_store, onClick: this.handleCommand})
 
     return (
       e(Section, {className: "ApplicationShell"},
         e(TitleBar, {name: "Launch Pad"}),
-        e(MenuBar, {onClick: this.handleMenu, selected: mode}),
+        e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
         view,
         e(Section, {className: 'Footer'})
       ))
@@ -420,7 +448,7 @@ class App extends React.PureComponent {
     super(props)
     this.state = {
       loggedIn: LOADING,
-      apps: [],
+      apps: {applications: [], app_store: []},
     }
 
     let loc = window.location
@@ -443,10 +471,10 @@ class App extends React.PureComponent {
     this.client.setAuthToken(token)
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.client.fetchApplications((apps) => {
-      apps.applications.sort((a, b) =>
-        (a.name > b.name) ? 1 : (a.name < b.name) ? -1 : 0
-      )
-      this.setState({apps: apps.applications})
+      let sorter = (a, b) => (a.name > b.name) ? 1 : (a.name < b.name) ? -1 : 0
+      apps.applications.sort(sorter)
+      apps.app_store.sort(sorter)
+      this.setState({apps: apps})
     })
   }
 

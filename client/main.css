@@ -237,7 +237,7 @@ path {
 .TitleBar .Name {
   flex: 1;
   padding-left: 15px;
-  font-size: 18pt;
+  font-size: 14pt;
   letter-spacing: 2px;
 }
 
@@ -261,6 +261,50 @@ path {
   right: 0;
   bottom: 4px;
   padding-left: 20px;
+  padding-right: 40px;
+}
+
+/*---------------------------------------------------------------------------*/
+
+.Tabular {
+  margin-top: 20px;
+}
+
+.Tabular table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.Tabular thead th {
+  border-bottom: 2px solid black;
+  text-align: left;
+  font-size: 11pt;
+  font-weight: bold;
+  padding: 6px;
+  color: #444;
+}
+
+.Tabular tbody tr:nth-child(odd) {
+  background-color: #e8e8e8;
+}
+
+.Tabular tbody td {
+  border-bottom: 1px solid #d8d8d8;
+  font-size: 11pt;
+  padding: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+}
+
+.Tabular tbody td.Date {
+  font-size: 10pt;
+}
+
+.Tabular .Right {
+  text-align: right;
+  padding-right: 8px;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -326,7 +370,7 @@ path {
 }
 
 .MenuBar .MenuItem.Focus .Name {
-  color: DarkRed;
+  color: darkred;
 }
 
 .MenuBar .MenuItem.Focus .Icon {
