@@ -49,13 +49,15 @@ func main() {
 	proxy := internal.NewProxyServer(appDir, hostDir, appstore, commander)
 	proxy.AddRoute("api", "127.0.0.1:10001")
 
-	go proxy.Start()
+	go commander.Start()
 	go appstore.Start()
+	go proxy.Start()
 
 	blockUntilShutdownThenDo(func() {
 		log.Println("Shutdown")
-		appstore.Stop()
 		proxy.Stop()
+		appstore.Stop()
+		commander.Stop()
 	})
 
 	log.Println("System halt.")

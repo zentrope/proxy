@@ -35,9 +35,16 @@ type CommandResult struct {
 	Reason string
 }
 
+type CommandJob struct {
+	command string
+	oid     string
+	result  chan CommandResult
+}
+
 type CommandProcessor struct {
 	appDir   string
 	appStore *AppStore
+	queue    chan CommandJob
 }
 
 const (
@@ -49,34 +56,50 @@ func NewCommandProcessor(appDir string, appStore *AppStore) *CommandProcessor {
 	return &CommandProcessor{
 		appDir:   appDir,
 		appStore: appStore,
+		queue:    make(chan CommandJob),
 	}
+}
+
+func (cp *CommandProcessor) Start() {
+	go cp.processJobs()
+}
+
+func (cp *CommandProcessor) Stop() {
+	close(cp.queue)
 }
 
 func (cp *CommandProcessor) Invoke(clientId, command, oid string) chan CommandResult {
 	out := make(chan CommandResult)
 	go func() {
-		defer close(out)
-
-		switch command {
-
-		case "install":
-			out <- cp.install(clientId, oid)
-
-		case "uninstall":
-			out <- cp.uninstall(clientId, oid)
-
-		default:
-			out <- badResult(fmt.Sprintf("Unknown command: %v", command))
+		cp.queue <- CommandJob{
+			command: command,
+			oid:     oid,
+			result:  out,
 		}
-
-		out <- goodResult()
 	}()
 	return out
 }
 
 //-----------------------------------------------------------------------------
 
-func (cp *CommandProcessor) uninstall(clientId, oid string) CommandResult {
+func (cp *CommandProcessor) processJobs() {
+	for job := range cp.queue {
+		defer close(job.result)
+		switch job.command {
+
+		case "install":
+			job.result <- cp.install(job.oid)
+
+		case "uninstall":
+			job.result <- cp.uninstall(job.oid)
+
+		default:
+			job.result <- badResult(fmt.Sprintf("Unknown command: %v", job.command))
+		}
+	}
+}
+
+func (cp *CommandProcessor) uninstall(oid string) CommandResult {
 	sku, err := cp.appStore.Find(oid)
 	if err != nil {
 		return badResult(err.Error())
@@ -96,7 +119,7 @@ func (cp *CommandProcessor) uninstall(clientId, oid string) CommandResult {
 	return goodResult()
 }
 
-func (cp *CommandProcessor) install(clientId, oid string) CommandResult {
+func (cp *CommandProcessor) install(oid string) CommandResult {
 	sku, err := cp.appStore.Find(oid)
 	if err != nil {
 		return badResult(err.Error())
