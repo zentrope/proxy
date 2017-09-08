@@ -16,7 +16,8 @@
 
 PACKAGE = github.com/zentrope/proxy
 
-.PHONY: build run clean help init vendor vendor-list
+.PHONY: build run run-backend run-store clean
+.PHONY: help init vendor vendor-list
 
 .DEFAULT_GOAL := help
 
@@ -35,7 +36,7 @@ build: vendor ## Build the app.
 	go build -o backend cmd/backend/main.go
 	go build -o proxy
 
-run: ## Run the app from source
+run: vendor ## Run the app from source
 	go run main.go
 
 clean: ## Clean build artifacts (if any)
@@ -43,13 +44,18 @@ clean: ## Clean build artifacts (if any)
 	rm -f backend
 	rm -f cmd/backend/backend
 	rm -rf cmd/store/deploy
-	rm -rf public/beta
+	rm -rf public/holodeck
 	rm -rf public/ten-forward
 	rm -f  public/*.zip
 
 dist-clean: clean ## Clean everything, including vendor.
 	rm -rf vendor
 
+run-backend: ## Run the backend service in the current terminal
+	cd cmd/backend ; go run main.go
+
+run-store: ## Run the app store service in the current terminal.
+	cd cmd/store ; go run main.go
 
 init: vendor ## Initalize project (pull in vendors)
 
