@@ -103,7 +103,7 @@ class Client {
 
   fetchApplications(callback) {
     let query = this.__authorize({method: 'GET'})
-    fetch(this.url + "/shell", query)
+    fetch(this.url + "/query", query)
       .then(res => this.checkStatus(res))
       .then(res => res.json())
       .then(data => callback(data))

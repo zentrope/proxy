@@ -148,8 +148,8 @@ func (proxy ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "auth":
 		proxy.HandleAuth(w, r)
 
-	case "shell":
-		proxy.HandleShell(w, r)
+	case "query":
+		proxy.HandleQuery(w, r)
 
 	case "command":
 		proxy.HandleCommand(w, r)
@@ -225,12 +225,12 @@ func (proxy ProxyServer) HandleHomeApp(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
-type ShellState struct {
+type QueryResults struct {
 	Applications []*InstalledApp `json:"applications"`
 	AppStore     []*AppStoreSku  `json:"app_store"`
 }
 
-func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) HandleQuery(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
@@ -248,7 +248,7 @@ func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
 		skus[i].IsInstalled = installs[sku.XRN] != nil
 	}
 
-	graph := &ShellState{
+	graph := &QueryResults{
 		Applications: proxy.Applications.InstalledApps,
 		AppStore:     skus,
 	}
