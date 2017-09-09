@@ -43,7 +43,7 @@ type CommandJob struct {
 
 type CommandProcessor struct {
 	appDir   string
-	appStore *AppStore
+	database *Database
 	queue    chan CommandJob
 }
 
@@ -52,10 +52,10 @@ const (
 	CommandError = iota
 )
 
-func NewCommandProcessor(appDir string, appStore *AppStore) *CommandProcessor {
+func NewCommandProcessor(appDir string, database *Database) *CommandProcessor {
 	return &CommandProcessor{
 		appDir:   appDir,
-		appStore: appStore,
+		database: database,
 		queue:    make(chan CommandJob),
 	}
 }
@@ -100,7 +100,7 @@ func (cp *CommandProcessor) processJobs() {
 }
 
 func (cp *CommandProcessor) uninstall(oid string) CommandResult {
-	sku, err := cp.appStore.Find(oid)
+	sku, err := cp.database.FindSKU(oid)
 	if err != nil {
 		return badResult(err.Error())
 	}
@@ -120,7 +120,7 @@ func (cp *CommandProcessor) uninstall(oid string) CommandResult {
 }
 
 func (cp *CommandProcessor) install(oid string) CommandResult {
-	sku, err := cp.appStore.Find(oid)
+	sku, err := cp.database.FindSKU(oid)
 	if err != nil {
 		return badResult(err.Error())
 	}

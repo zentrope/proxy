@@ -46,7 +46,6 @@ func (routes RouteMap) Set(context, url string) {
 
 type ProxyServer struct {
 	Applications   *Applications
-	AppStore       *AppStore
 	Database       *Database
 	Routes         RouteMap
 	RootAppHandler http.Handler
@@ -55,11 +54,10 @@ type ProxyServer struct {
 	commander      *CommandProcessor
 }
 
-func NewProxyServer(appDir, hostDir string, appStore *AppStore,
+func NewProxyServer(appDir, hostDir string, database *Database,
 	commander *CommandProcessor) ProxyServer {
 	return ProxyServer{
-		Database:       NewDatabase(),
-		AppStore:       appStore,
+		Database:       database,
 		commander:      commander,
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
@@ -74,8 +72,7 @@ func (proxy ProxyServer) Start() {
 
 	server := http.Server{Addr: ":8080", Handler: proxy}
 	go proxy.TestConnectionsContinuously()
-
-	log.Fatal(server.ListenAndServe())
+	go log.Fatal(server.ListenAndServe())
 }
 
 func (proxy ProxyServer) Stop() {
@@ -244,7 +241,7 @@ func (proxy ProxyServer) HandleShell(w http.ResponseWriter, r *http.Request) {
 	proxy.Applications.Reload()
 
 	installs := proxy.Applications.AppMap()
-	skus := proxy.AppStore.Skus()
+	skus := proxy.Database.SKUs()
 
 	// Flag already installed SKUs.
 	for i, sku := range skus {

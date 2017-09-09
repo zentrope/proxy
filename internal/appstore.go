@@ -18,35 +18,23 @@ package internal
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 )
 
-type AppStoreSku struct {
-	XRN         string `json:"xrn"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Version     string `json:"version"`
-	Date        string `json:"date"`
-	Author      string `json:"author"`
-	Context     string `json:"context,omitempty"`
-	DownloadURL string `json:"download_url,omitempty"`
-	IsInstalled bool   `json:"is_installed"`
-}
-
 type AppStore struct {
-	skus     []*AppStoreSku
 	storeURL string
 	clock    *time.Ticker
+	db       *Database
 }
 
-func NewAppStore(storeUrl string) *AppStore {
+func NewAppStore(storeUrl string, db *Database) *AppStore {
 	return &AppStore{
 		storeURL: storeUrl,
 		clock:    time.NewTicker(17 * time.Second),
+		db:       db,
 	}
 }
 
@@ -61,30 +49,6 @@ func (store *AppStore) Stop() {
 	if store.clock != nil {
 		store.clock.Stop()
 	}
-}
-
-func (store *AppStore) Find(xrn string) (*AppStoreSku, error) {
-	for _, sku := range store.skus {
-		if sku.XRN == xrn {
-			return sku, nil
-		}
-	}
-	return nil, fmt.Errorf("App '%s' not found.", xrn)
-}
-
-func (store *AppStore) Skus() []*AppStoreSku {
-	// Return skus, but remove some of the data
-
-	skus := make([]*AppStoreSku, 0)
-	for _, s := range store.skus {
-		var newSku AppStoreSku
-		newSku = *s
-		newSku.Context = ""
-		newSku.DownloadURL = ""
-		skus = append(skus, &newSku)
-	}
-
-	return skus
 }
 
 //-----------------------------------------------------------------------------
@@ -114,6 +78,7 @@ func (store *AppStore) fetch() error {
 	if err := json.Unmarshal(body, &apps); err != nil {
 		return err
 	}
-	store.skus = apps
+
+	store.db.SetSKUs(apps)
 	return nil
 }

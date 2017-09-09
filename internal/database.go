@@ -39,14 +39,35 @@ type User struct {
 	Password string
 }
 
+type AppStoreSku struct {
+	XRN         string `json:"xrn"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Version     string `json:"version"`
+	Date        string `json:"date"`
+	Author      string `json:"author"`
+	Context     string `json:"context,omitempty"`
+	DownloadURL string `json:"download_url,omitempty"`
+	IsInstalled bool   `json:"is_installed"`
+}
+
 type Database struct {
 	Users []*User
+	Skus  []*AppStoreSku
 }
 
 func NewDatabase() *Database {
 	return &Database{
 		Users: []*User{NewUser("test@example.com", "test1234")},
 	}
+}
+
+func (db *Database) Start() {
+	log.Println("Starting database.")
+}
+
+func (db *Database) Stop() {
+	log.Println("Stopping database.")
 }
 
 func NewUser(email, password string) *User {
@@ -70,6 +91,36 @@ func (db *Database) FindUser(email, password string) (*User, error) {
 	}
 	return nil, errors.New("User not found.")
 }
+
+func (db *Database) FindSKU(xrn string) (*AppStoreSku, error) {
+	for _, sku := range db.Skus {
+		if sku.XRN == xrn {
+			return sku, nil
+		}
+	}
+	return nil, fmt.Errorf("App '%s' not found.", xrn)
+}
+
+func (db *Database) SKUs() []*AppStoreSku {
+	// Return skus, but remove some of the data
+
+	skus := make([]*AppStoreSku, 0)
+	for _, s := range db.Skus {
+		var newSku AppStoreSku
+		newSku = *s
+		newSku.Context = ""
+		newSku.DownloadURL = ""
+		skus = append(skus, &newSku)
+	}
+
+	return skus
+}
+
+func (db *Database) SetSKUs(skus []*AppStoreSku) {
+	db.Skus = skus
+}
+
+//-----------------------------------------------------------------------------
 
 func validPassword(password, hash string) bool {
 	decoded, err := hex.DecodeString(hash)
