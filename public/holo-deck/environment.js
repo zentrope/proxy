@@ -1,3 +1,0 @@
-window.env = {
-  endpoint: "/api"
-}
