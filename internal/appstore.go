@@ -63,10 +63,12 @@ func (store *AppStore) fetchStoreDataContinuously() {
 }
 
 func (store *AppStore) fetch() error {
+
 	resp, err := http.Get(store.storeURL + "/catalog")
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 
