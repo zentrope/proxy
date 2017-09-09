@@ -35,16 +35,16 @@ type CommandResult struct {
 	Reason string
 }
 
-type CommandJob struct {
-	command string
-	oid     string
-	result  chan CommandResult
+type Command interface {
+	invoke(database *Database) CommandResult
 }
+
+type CommandFunc func()
 
 type CommandProcessor struct {
 	appDir   string
 	database *Database
-	queue    chan CommandJob
+	queue    chan CommandFunc
 }
 
 const (
@@ -56,27 +56,37 @@ func NewCommandProcessor(appDir string, database *Database) *CommandProcessor {
 	return &CommandProcessor{
 		appDir:   appDir,
 		database: database,
-		queue:    make(chan CommandJob),
+		queue:    make(chan CommandFunc),
 	}
 }
 
 func (cp *CommandProcessor) Start() {
+	log.Printf("Starting command processor.")
 	go cp.processJobs()
 }
 
 func (cp *CommandProcessor) Stop() {
+	log.Printf("Stopping command processor.")
 	close(cp.queue)
 }
 
-func (cp *CommandProcessor) Invoke(clientId, command, oid string) chan CommandResult {
+func (cp *CommandProcessor) Invoke(clientId, command, xrn string) chan CommandResult {
 	out := make(chan CommandResult)
-	go func() {
-		cp.queue <- CommandJob{
-			command: command,
-			oid:     oid,
-			result:  out,
-		}
-	}()
+
+	var cmd Command
+	switch command {
+	case "install":
+		cmd = installCmd{xrn, cp.appDir}
+	case "uninstall":
+		cmd = uninstallCmd{xrn, cp.appDir}
+	default:
+		cmd = unknownCmd{command}
+	}
+
+	cp.queue <- func() {
+		out <- cmd.invoke(cp.database)
+	}
+
 	return out
 }
 
@@ -84,50 +94,36 @@ func (cp *CommandProcessor) Invoke(clientId, command, oid string) chan CommandRe
 
 func (cp *CommandProcessor) processJobs() {
 	for job := range cp.queue {
-		defer close(job.result)
-		switch job.command {
-
-		case "install":
-			job.result <- cp.install(job.oid)
-
-		case "uninstall":
-			job.result <- cp.uninstall(job.oid)
-
-		default:
-			job.result <- badResult(fmt.Sprintf("Unknown command: %v", job.command))
-		}
+		job()
 	}
 }
 
-func (cp *CommandProcessor) uninstall(oid string) CommandResult {
-	sku, err := cp.database.FindSKU(oid)
-	if err != nil {
-		return badResult(err.Error())
-	}
+//-----------------------------------------------------------------------------
 
-	publicDir, err := filepath.Abs(cp.appDir)
-	if err != nil {
-		return badResult(err.Error())
-	}
-
-	contextDir := filepath.Join(publicDir, sku.Context)
-
-	if err := os.RemoveAll(contextDir); err != nil {
-		return badResult(err.Error())
-	}
-
-	return goodResult()
+type installCmd struct {
+	xrn    string
+	appDir string
 }
 
-func (cp *CommandProcessor) install(oid string) CommandResult {
-	sku, err := cp.database.FindSKU(oid)
+type uninstallCmd struct {
+	xrn    string
+	appDir string
+}
+
+type unknownCmd struct {
+	name string
+}
+
+func (cmd installCmd) invoke(database *Database) CommandResult {
+
+	sku, err := database.FindSKU(cmd.xrn)
 	if err != nil {
 		return badResult(err.Error())
 	}
 
 	url := sku.DownloadURL
 
-	publicDir, err := filepath.Abs(cp.appDir)
+	publicDir, err := filepath.Abs(cmd.appDir)
 	if err != nil {
 		return badResult(err.Error())
 	}
@@ -158,6 +154,30 @@ func (cp *CommandProcessor) install(oid string) CommandResult {
 	}
 
 	return goodResult()
+}
+
+func (cmd uninstallCmd) invoke(database *Database) CommandResult {
+	sku, err := database.FindSKU(cmd.xrn)
+	if err != nil {
+		return badResult(err.Error())
+	}
+
+	publicDir, err := filepath.Abs(cmd.appDir)
+	if err != nil {
+		return badResult(err.Error())
+	}
+
+	contextDir := filepath.Join(publicDir, sku.Context)
+
+	if err := os.RemoveAll(contextDir); err != nil {
+		return badResult(err.Error())
+	}
+
+	return goodResult()
+}
+
+func (cmd unknownCmd) invoke(database *Database) CommandResult {
+	return badResult(fmt.Sprintf("Unknown command: '%v'.", cmd.name))
 }
 
 //-----------------------------------------------------------------------------
