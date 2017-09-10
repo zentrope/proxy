@@ -28,6 +28,8 @@ import (
 	"net/http/httputil"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 //-----------------------------------------------------------------------------
@@ -154,6 +156,9 @@ func (proxy ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "command":
 		proxy.HandleCommand(w, r)
 
+	case "ws":
+		proxy.HandleWebSocket(w, r)
+
 	case "":
 		proxy.HandleHomeApp(w, r)
 
@@ -164,6 +169,58 @@ func (proxy ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			proxy.HandleInstalledApps(w, r)
 		}
 	}
+}
+
+//-----------------------------------------------------------------------------
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+var pingPacket = []byte(`{"type":"ping"}`)
+
+func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	token, err := checkAuth(w, r)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		writeError(w, 500, err.Error())
+		return
+	}
+
+	defer conn.Close()
+
+	log.Printf(" - socket.open: %v", token)
+	for {
+		_, bytes, err := conn.ReadMessage()
+		if err != nil {
+			log.Printf(" - socket.error: %v", err)
+			break
+		}
+
+		// message := string(bytes)
+		// log.Printf(" - socket.read: %v", message)
+
+		var msg map[string]string
+		if err := json.Unmarshal(bytes, &msg); err != nil {
+			log.Printf(" - socket.msg.err: %v", err)
+			continue
+		}
+
+		if msg["type"] == "ping" {
+			err := conn.WriteMessage(websocket.TextMessage, pingPacket)
+			if err != nil {
+				break
+			}
+		}
+	}
+
+	log.Printf(" - socket.closed: %v", token)
 }
 
 //-----------------------------------------------------------------------------

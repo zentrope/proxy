@@ -31,6 +31,64 @@ const Td='td'
 
 //-----------------------------------------------------------------------------
 
+class PushNotifier {
+
+  constructor() {
+    this.ws = null
+    this.timeoutId = null
+    this.interval = 5000
+    this.pinger = this.pinger.bind(this)
+  }
+
+  start() {
+    console.log("Starting websocket.")
+    this.ws = new WebSocket("ws://" + window.location.host + "/ws");
+
+    this.ws.onmessage = (evt) => {
+//      let msg = JSON.parse(evt.data)
+//      console.log("socket.recv: ", msg)
+    }
+
+    this.ws.onopen = (evt) => {
+      console.log("socket.open")
+    }
+
+    this.ws.onclose = () => {
+      console.log("socket.close")
+    }
+
+    this.ws.onerror = (err) => {
+      console.log("socket.error", err)
+    }
+
+    setTimeout(this.pinger, this.interval)
+  }
+
+  stop() {
+    console.log("Stopping websocket.")
+
+    if (this.ws) {
+      this.ws.close()
+    }
+
+    if (this.timeoutId) {
+      clearTimeout(this.clock)
+    }
+  }
+
+  pinger() {
+    if (this.ws.readyState === 3) {
+      console.log("Socket is down, done pinging.")
+    } else if (this.ws.readyState !== 1) {
+      console.log("Socket not yet ready, skipping.")
+      this.timeoutId = setTimeout(this.pinger, this.interval)
+    } else {
+      this.ws.send(`{"type": "ping"}`)
+      this.timeoutId = setTimeout(this.pinger, this.interval)
+    }
+  }
+}
+
 class Client {
 
   constructor(url, errorDelegate) {
@@ -40,6 +98,9 @@ class Client {
     if (errorDelegate) {
       this.errorDelegate = errorDelegate
     }
+
+
+    this.notifier = null
 
     this.checkStatus = this.checkStatus.bind(this)
     this.errorDelegate = this.errorDelegate.bind(this)
@@ -108,6 +169,23 @@ class Client {
       .then(res => res.json())
       .then(data => callback(data))
       .catch(err => this.errorDelegate(err))
+  }
+
+  startNotifier() {
+    console.log("Starting push notification handler.")
+    if (this.notifier !== null) {
+      this.notifier.stop()
+    }
+    this.notifier = new PushNotifier()
+    this.notifier.start()
+  }
+
+  stopNotifier() {
+    console.log("Stopping push notification handler.")
+    if (this.notifier !== null) {
+      this.notifier.stop()
+      this.notifier = null
+    }
   }
 }
 
@@ -257,23 +335,12 @@ class AppIcon extends React.PureComponent {
 
 class Application extends React.PureComponent {
 
-  constructor(props) {
-    super(props)
-    this.launch = this.launch.bind(this)
-  }
-
-  launch() {
-    let context = this.props.application.context
-    let loc = window.location
-    window.location.href = "/" + context
-  }
-
   render() {
-    const { application } = this.props
+    const { application, onLaunch } = this.props
 
     return (
       e(Div, {className: "Application"},
-        e(Div, {onClick: this.launch},
+        e(Div, {onClick: () => onLaunch(application.context)},
           e(AppIcon, {icon: application.icon}),
           e(Div, {className: "Title"}, application.name),
           e(Div, {className: "Context"}, application.version))))
@@ -283,12 +350,14 @@ class Application extends React.PureComponent {
 class LaunchPad extends React.PureComponent {
 
   render() {
-    const { apps } = this.props
+    const { apps, onLaunch } = this.props
 
     return (
       e(WorkArea, {},
         e(Section, {className: "LaunchPad"},
-          apps.map(a => e(Application, {key: a.context, application: a})))))
+          apps.map(a => e(Application, {key: a.context,
+                                        application: a,
+                                        onLaunch: onLaunch})))))
   }
 }
 
@@ -450,10 +519,10 @@ class MainPhase extends React.PureComponent {
 
   render() {
     const { mode } = this.state
-    const { onLogout, onCommand, apps } = this.props
+    const { onLogout, onCommand, onLaunch, apps } = this.props
 
     let view = mode === 'launch-pad' ?
-               e(LaunchPad, {apps: apps.applications}) :
+               e(LaunchPad, {apps: apps.applications, onLaunch: onLaunch}) :
                e(Appstore, {apps: apps.app_store, onClick: onCommand})
 
     return (
@@ -478,15 +547,20 @@ class App extends React.PureComponent {
     super(props)
     this.state = {
       loggedIn: LOADING,
-      apps: {applications: [], app_store: []},
+      apps: {
+        applications: [],
+        app_store: []
+      },
     }
 
     let loc = window.location
     let url = loc.protocol + "//" + loc.host;
+
     this.client = new Client(url)
 
     this.onLogout = this.onLogout.bind(this)
     this.onLogin = this.onLogin.bind(this)
+    this.onLaunch = this.onLaunch.bind(this)
     this.onCommand = this.onCommand.bind(this)
     this.doFetch = this.doFetch.bind(this)
   }
@@ -495,12 +569,14 @@ class App extends React.PureComponent {
     this.setState({loggedIn: LOGGED_OUT})
     localStorage.removeItem("authToken")
     window.location.href = "/logout"
+    this.client.stopNotifier()
   }
 
   onLogin(token) {
     this.setState({loggedIn: LOGGED_IN})
     localStorage.setItem("authToken", token)
     this.client.setAuthToken(token)
+    this.client.startNotifier()
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.doFetch()
   }
@@ -512,6 +588,12 @@ class App extends React.PureComponent {
       apps.app_store.sort(sorter)
       this.setState({apps: apps})
     })
+  }
+
+  onLaunch(context) {
+    this.client.stopNotifier()
+    let loc = window.location
+    window.location.href = "/" + context
   }
 
   onCommand(command) {
@@ -564,7 +646,7 @@ class App extends React.PureComponent {
 
       case LOGGED_IN:
         return (e(MainPhase, {onLogout: this.onLogout, onCommand: this.onCommand,
-                              apps: apps}))
+                              onLaunch: this.onLaunch, apps: apps}))
 
       default:
         return (e(LoadingPhase))
