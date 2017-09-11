@@ -43,13 +43,15 @@ func main() {
 	hostDir := "./client"
 	appStoreUrl := "http://localhost:60001"
 
+	clients := internal.NewClientHub()
 	database := internal.NewDatabase()
 	appstore := internal.NewAppStore(appStoreUrl, database)
-	commander := internal.NewCommandProcessor(appDir, database)
+	commander := internal.NewCommandProcessor(appDir, database, clients)
 
-	proxy := internal.NewProxyServer(appDir, hostDir, database, commander)
+	proxy := internal.NewProxyServer(appDir, hostDir, database, commander, clients)
 	proxy.AddRoute("api", "127.0.0.1:10001")
 
+	clients.Start()
 	database.Start()
 	commander.Start()
 	appstore.Start()
@@ -61,6 +63,7 @@ func main() {
 		appstore.Stop()
 		commander.Stop()
 		database.Stop()
+		clients.Stop()
 	})
 
 	log.Println("System halt.")

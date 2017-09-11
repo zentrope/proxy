@@ -37,15 +37,16 @@ type CommandResult struct {
 }
 
 type Command interface {
-	invoke(database *Database) CommandResult
+	invoke(ctx *CommandProcessor) CommandResult
 }
 
 type CommandFunc func()
 
 type CommandProcessor struct {
-	appDir   string
-	database *Database
-	queue    chan CommandFunc
+	appDir    string
+	database  *Database
+	clienthub *ClientHub
+	queue     chan CommandFunc
 }
 
 const (
@@ -53,11 +54,12 @@ const (
 	CommandError = iota
 )
 
-func NewCommandProcessor(appDir string, database *Database) *CommandProcessor {
+func NewCommandProcessor(appDir string, database *Database, clients *ClientHub) *CommandProcessor {
 	return &CommandProcessor{
-		appDir:   appDir,
-		database: database,
-		queue:    make(chan CommandFunc),
+		appDir:    appDir,
+		database:  database,
+		clienthub: clients,
+		queue:     make(chan CommandFunc),
 	}
 }
 
@@ -83,7 +85,7 @@ func (cp *CommandProcessor) Invoke(clientId, command, xrn string) {
 	}
 
 	cp.queue <- func() {
-		result := cmd.invoke(cp.database)
+		result := cmd.invoke(cp)
 		log.Printf("- %#v", result)
 	}
 }
@@ -112,9 +114,9 @@ type unknownCmd struct {
 	name string
 }
 
-func (cmd installCmd) invoke(database *Database) CommandResult {
+func (cmd installCmd) invoke(ctx *CommandProcessor) CommandResult {
 
-	sku, err := database.FindSKU(cmd.xrn)
+	sku, err := ctx.database.FindSKU(cmd.xrn)
 	if err != nil {
 		return badResult(cmd, err.Error())
 	}
@@ -151,12 +153,13 @@ func (cmd installCmd) invoke(database *Database) CommandResult {
 		return badResult(cmd, err.Error())
 	}
 
-	database.NotifyRefresh()
+	ctx.clienthub.NotifyRefresh()
 	return goodResult(cmd)
 }
 
-func (cmd uninstallCmd) invoke(database *Database) CommandResult {
-	sku, err := database.FindSKU(cmd.xrn)
+func (cmd uninstallCmd) invoke(ctx *CommandProcessor) CommandResult {
+
+	sku, err := ctx.database.FindSKU(cmd.xrn)
 	if err != nil {
 		return badResult(cmd, err.Error())
 	}
@@ -172,11 +175,11 @@ func (cmd uninstallCmd) invoke(database *Database) CommandResult {
 		return badResult(cmd, err.Error())
 	}
 
-	database.NotifyRefresh()
+	ctx.clienthub.NotifyRefresh()
 	return goodResult(cmd)
 }
 
-func (cmd unknownCmd) invoke(database *Database) CommandResult {
+func (cmd unknownCmd) invoke(ctx *CommandProcessor) CommandResult {
 	return badResult(cmd, fmt.Sprintf("Unknown command: '%v'.", cmd.name))
 }
 

@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
@@ -62,13 +61,11 @@ type Database struct {
 	Users   []*User
 	Skus    []*AppStoreSku
 	Clients []*ClientConn
-	mutex   sync.Mutex
 }
 
 func NewDatabase() *Database {
 	return &Database{
 		Users: []*User{NewUser("test@example.com", "test1234")},
-		mutex: sync.Mutex{},
 	}
 }
 
@@ -128,41 +125,6 @@ func (db *Database) SKUs() []*AppStoreSku {
 
 func (db *Database) SetSKUs(skus []*AppStoreSku) {
 	db.Skus = skus
-}
-
-func (db *Database) AddClient(token string, conn *websocket.Conn) *ClientConn {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-	client := &ClientConn{token, conn}
-	db.Clients = append(db.Clients, client)
-	return client
-}
-
-func (db *Database) DeleteClient(conn *websocket.Conn) {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-	clients := make([]*ClientConn, 0)
-	for _, client := range db.Clients {
-		if client.conn != conn {
-			clients = append(clients, client)
-		}
-	}
-	db.Clients = clients
-}
-
-type SimpleNotification struct {
-	Type string `json:"type"`
-}
-
-func (db *Database) NotifyRefresh() {
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
-	refresh := SimpleNotification{"refresh"}
-	for _, client := range db.Clients {
-		if err := websocket.WriteJSON(client.conn, refresh); err != nil {
-			log.Printf("ERROR: Unable to write to socket.")
-		}
-	}
 }
 
 //-----------------------------------------------------------------------------

@@ -54,13 +54,15 @@ type ProxyServer struct {
 	StaticHandler  http.Handler
 	Checker        *time.Ticker
 	commander      *CommandProcessor
+	clienthub      *ClientHub
 }
 
 func NewProxyServer(appDir, hostDir string, database *Database,
-	commander *CommandProcessor) ProxyServer {
+	commander *CommandProcessor, clients *ClientHub) ProxyServer {
 	return ProxyServer{
 		Database:       database,
 		commander:      commander,
+		clienthub:      clients,
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
 		Applications:   NewApplications(appDir),
@@ -196,7 +198,8 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 
 	defer conn.Close()
 
-	client := proxy.Database.AddClient(token, conn)
+	client := NewClient(token, conn)
+	proxy.clienthub.Add(client)
 
 	log.Printf(" - socket.open: %v", token)
 	log.Printf(" - client: %v", client)
@@ -225,7 +228,7 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	proxy.Database.DeleteClient(conn)
+	proxy.clienthub.Delete(client)
 	log.Printf(" - socket.closed: %v", token)
 }
 
