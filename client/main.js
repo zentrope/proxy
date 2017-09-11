@@ -38,12 +38,13 @@ class PushNotifier {
     this.timeoutId = null
     this.interval = 5000
     this.pinger = this.pinger.bind(this)
+    this.reconnect = this.reconnect.bind(this)
 
     this.handlers = handlerMap == null ? {} : handlerMap
   }
 
   start() {
-    console.log("Starting websocket (auto-reconnect not implemented).")
+    console.log("Starting websocket.")
     this.ws = new WebSocket("ws://" + window.location.host + "/ws");
 
     this.ws.onmessage = (evt) => {
@@ -55,18 +56,6 @@ class PushNotifier {
       } else {
         handler(msg)
       }
-    }
-
-    this.ws.onopen = (evt) => {
-      console.log("socket.open")
-    }
-
-    this.ws.onclose = () => {
-      console.log("socket.close")
-    }
-
-    this.ws.onerror = (err) => {
-      console.log("socket.error", err)
     }
 
     setTimeout(this.pinger, this.interval)
@@ -84,16 +73,23 @@ class PushNotifier {
     }
   }
 
+  reconnect() {
+    try {
+      console.log("Socket: attempting to start.")
+      this.start()
+    }
+    catch (err) {
+      log.error(err)
+    }
+  }
+
   pinger() {
     if (this.ws.readyState === 3) {
-      console.log("Socket is down, done pinging.")
-    } else if (this.ws.readyState !== 1) {
-      console.log("Socket not yet ready, skipping.")
-      this.timeoutId = setTimeout(this.pinger, this.interval)
-    } else {
+      this.reconnect()
+    } else if (this.ws.readyState === 1) {
       this.ws.send(`{"type": "ping"}`)
-      this.timeoutId = setTimeout(this.pinger, this.interval)
     }
+    this.timeoutId = setTimeout(this.pinger, this.interval)
   }
 }
 
