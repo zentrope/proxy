@@ -19,16 +19,41 @@
 package internal
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
 )
 
+//-----------------------------------------------------------------------------
+
 type Client struct {
 	token string
 	conn  *websocket.Conn
 }
+
+func NewClient(token string, conn *websocket.Conn) *Client {
+	return &Client{
+		token: token,
+		conn:  conn,
+	}
+}
+
+func (client *Client) Send(msg interface{}) error {
+	return websocket.WriteJSON(client.conn, msg)
+}
+
+func (client *Client) SendAck(command string) error {
+	type ackMsg struct {
+		Type    string `json:"type"`
+		Command string `json:"command"`
+	}
+	msg := ackMsg{"ack", command}
+	return client.Send(msg)
+}
+
+//-----------------------------------------------------------------------------
 
 type ClientHub struct {
 	clients []*Client
@@ -41,19 +66,21 @@ func NewClientHub() *ClientHub {
 	}
 }
 
-func NewClient(token string, conn *websocket.Conn) *Client {
-	return &Client{
-		token: token,
-		conn:  conn,
-	}
-}
-
 func (hub *ClientHub) Start() {
 	log.Println("Starting client hub.")
 }
 
 func (hub *ClientHub) Stop() {
 	log.Println("Stopping client hub.")
+}
+
+func (hub *ClientHub) SendAck(token, command string) error {
+	for _, c := range hub.clients {
+		if c.token == token {
+			return c.SendAck(command)
+		}
+	}
+	return fmt.Errorf("Unable to find client to ack.")
 }
 
 func (hub *ClientHub) Add(client *Client) *Client {
@@ -88,7 +115,7 @@ func (hub *ClientHub) NotifyRefresh() {
 	hub.mutex.Lock()
 	defer hub.mutex.Unlock()
 	for _, client := range hub.clients {
-		if err := websocket.WriteJSON(client.conn, commandRefresh); err != nil {
+		if err := client.Send(commandRefresh); err != nil {
 			log.Printf("ERROR: Unable to write to socket.")
 		}
 	}

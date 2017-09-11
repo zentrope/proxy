@@ -358,6 +358,8 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 	log.Printf("- invoking command '%v'", command.Command)
 	proxy.commander.Invoke(token, command.Command, command.Id)
 
+	proxy.clienthub.SendAck(token, command.Command)
+
 	setAuth(w, token)
 	w.WriteHeader(200)
 }

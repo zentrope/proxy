@@ -52,7 +52,7 @@ class PushNotifier {
 
       let handler = this.handlers[msg.type]
       if (handler === undefined || handler === null) {
-        console.log("socket.recv (unknown): ", msg)
+        console.log("socket.recv (no-handler): ", msg)
       } else {
         handler(msg)
       }
