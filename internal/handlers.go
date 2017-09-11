@@ -181,6 +181,7 @@ var upgrader = websocket.Upgrader{
 var pingPacket = []byte(`{"type":"ping"}`)
 
 func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+
 	token, err := checkAuth(w, r)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, err.Error())
@@ -195,7 +196,11 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 
 	defer conn.Close()
 
+	client := proxy.Database.AddClient(token, conn)
+
 	log.Printf(" - socket.open: %v", token)
+	log.Printf(" - client: %v", client)
+
 	for {
 		_, bytes, err := conn.ReadMessage()
 		if err != nil {
@@ -220,6 +225,7 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	proxy.Database.DeleteClient(conn)
 	log.Printf(" - socket.closed: %v", token)
 }
 
@@ -347,22 +353,10 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("- invoking command '%v'", command.Command)
-	result := <-proxy.commander.Invoke(token, command.Command, command.Id)
+	proxy.commander.Invoke(token, command.Command, command.Id)
 
 	setAuth(w, token)
-
-	switch result.Code {
-
-	case CommandOk:
-		log.Printf("- command completed successfully.")
-		w.WriteHeader(200)
-
-	default:
-		log.Printf("- command completed with an error %v", result.Reason)
-		w.WriteHeader(500)
-
-	}
-
+	w.WriteHeader(200)
 }
 
 //-----------------------------------------------------------------------------

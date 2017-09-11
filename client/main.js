@@ -33,20 +33,28 @@ const Td='td'
 
 class PushNotifier {
 
-  constructor() {
+  constructor(handlerMap) {
     this.ws = null
     this.timeoutId = null
     this.interval = 5000
     this.pinger = this.pinger.bind(this)
+
+    this.handlers = handlerMap == null ? {} : handlerMap
   }
 
   start() {
-    console.log("Starting websocket.")
+    console.log("Starting websocket (auto-reconnect not implemented).")
     this.ws = new WebSocket("ws://" + window.location.host + "/ws");
 
     this.ws.onmessage = (evt) => {
-//      let msg = JSON.parse(evt.data)
-//      console.log("socket.recv: ", msg)
+      let msg = JSON.parse(evt.data)
+
+      let handler = this.handlers[msg.type]
+      if (handler === undefined || handler === null) {
+        console.log("socket.recv (unknown): ", msg)
+      } else {
+        handler(msg)
+      }
     }
 
     this.ws.onopen = (evt) => {
@@ -171,12 +179,12 @@ class Client {
       .catch(err => this.errorDelegate(err))
   }
 
-  startNotifier() {
+  startNotifier(handlerMap) {
     console.log("Starting push notification handler.")
     if (this.notifier !== null) {
       this.notifier.stop()
     }
-    this.notifier = new PushNotifier()
+    this.notifier = new PushNotifier(handlerMap)
     this.notifier.start()
   }
 
@@ -576,7 +584,10 @@ class App extends React.PureComponent {
     this.setState({loggedIn: LOGGED_IN})
     localStorage.setItem("authToken", token)
     this.client.setAuthToken(token)
-    this.client.startNotifier()
+    this.client.startNotifier({
+      'refresh' : () => this.doFetch(),
+      'ping': () => { /* do nothing */ }
+    })
     document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
     this.doFetch()
   }
@@ -597,23 +608,18 @@ class App extends React.PureComponent {
   }
 
   onCommand(command) {
-    // For now, the contract is that a post to the command route
-    // will block until the command is completed. At that time,
-    // we need to refresh the state in case something new resulted
-    // from the command. In The Future: this would be accomplished
-    // in a more general way with a web-socket channel for push
-    // notifications.
+    // We assume we'll receive a push notification when we need
+    // to refresh the app state, so we can ignore the results
+    // of the post.
 
     let cs = JSON.stringify(command)
 
     let success = () => {
       console.log('cmd.ok')
-      this.doFetch()
     }
 
     let failure = (err) => {
       console.log("cmd.error -> ", err)
-      this.doFetch()
     }
 
     console.log("Invoking command: " + cs)

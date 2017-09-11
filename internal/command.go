@@ -31,8 +31,9 @@ import (
 type CommandCode int
 
 type CommandResult struct {
-	Code   CommandCode
-	Reason string
+	code    CommandCode
+	reason  string
+	command Command
 }
 
 type Command interface {
@@ -70,9 +71,7 @@ func (cp *CommandProcessor) Stop() {
 	close(cp.queue)
 }
 
-func (cp *CommandProcessor) Invoke(clientId, command, xrn string) chan CommandResult {
-	out := make(chan CommandResult)
-
+func (cp *CommandProcessor) Invoke(clientId, command, xrn string) {
 	var cmd Command
 	switch command {
 	case "install":
@@ -84,10 +83,9 @@ func (cp *CommandProcessor) Invoke(clientId, command, xrn string) chan CommandRe
 	}
 
 	cp.queue <- func() {
-		out <- cmd.invoke(cp.database)
+		result := cmd.invoke(cp.database)
+		log.Printf("- %#v", result)
 	}
-
-	return out
 }
 
 //-----------------------------------------------------------------------------
@@ -118,14 +116,14 @@ func (cmd installCmd) invoke(database *Database) CommandResult {
 
 	sku, err := database.FindSKU(cmd.xrn)
 	if err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
 	url := sku.DownloadURL
 
 	publicDir, err := filepath.Abs(cmd.appDir)
 	if err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
 	target := filepath.Join(publicDir, filepath.Base(url))
@@ -140,54 +138,56 @@ func (cmd installCmd) invoke(database *Database) CommandResult {
 
 	n, err := io.Copy(out, resp.Body)
 	if err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
 	log.Printf("- Downloaded %v bytes.", n)
 
 	if err := unzip(target, publicDir); err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
 	if err := os.Remove(target); err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
-	return goodResult()
+	database.NotifyRefresh()
+	return goodResult(cmd)
 }
 
 func (cmd uninstallCmd) invoke(database *Database) CommandResult {
 	sku, err := database.FindSKU(cmd.xrn)
 	if err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
 	publicDir, err := filepath.Abs(cmd.appDir)
 	if err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
 	contextDir := filepath.Join(publicDir, sku.Context)
 
 	if err := os.RemoveAll(contextDir); err != nil {
-		return badResult(err.Error())
+		return badResult(cmd, err.Error())
 	}
 
-	return goodResult()
+	database.NotifyRefresh()
+	return goodResult(cmd)
 }
 
 func (cmd unknownCmd) invoke(database *Database) CommandResult {
-	return badResult(fmt.Sprintf("Unknown command: '%v'.", cmd.name))
+	return badResult(cmd, fmt.Sprintf("Unknown command: '%v'.", cmd.name))
 }
 
 //-----------------------------------------------------------------------------
 
-func goodResult() CommandResult {
-	return CommandResult{Code: CommandOk, Reason: "Ok"}
+func goodResult(cmd Command) CommandResult {
+	return CommandResult{code: CommandOk, reason: "Ok", command: cmd}
 }
 
-func badResult(reason string) CommandResult {
-	return CommandResult{Code: CommandError, Reason: reason}
+func badResult(cmd Command, reason string) CommandResult {
+	return CommandResult{code: CommandError, reason: reason, command: cmd}
 }
 
 func unzip(archive, target string) error {
