@@ -30,9 +30,19 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 //-----------------------------------------------------------------------------
+
+func blockUntilShutdownThenDo(fn func()) {
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, os.Kill, os.Interrupt, syscall.SIGTERM,
+		syscall.SIGKILL, syscall.SIGHUP)
+	v := <-sigChan
+	log.Printf("Signal: %v\n", v)
+	fn()
+}
 
 func zipit(source, target string) error {
 	zipfile, err := os.Create(target)
@@ -95,25 +105,14 @@ func zipit(source, target string) error {
 	return err
 }
 
-func generateArtifacts(artifactDir string, skus []*Sku) ([]*Sku, error) {
-	updates := make([]*Sku, 0)
-	for _, sku := range skus {
-		dest := filepath.Join(artifactDir, sku.XRN+".zip")
-		dest, err := filepath.Abs(dest)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("  - Bundling %v.", sku.Name)
-		if err := zipit(sku.appdir, dest); err != nil {
-			return nil, err
-		}
-		sku.zipfile = dest
-		updates = append(updates, sku)
-	}
-	return updates, nil
-}
-
 //-----------------------------------------------------------------------------
+
+type System struct {
+	Skus      []*Sku
+	Cache     map[string]time.Time
+	sourceDir string
+	deployDir string
+}
 
 type Sku struct {
 	XRN         string `json:"xrn"`
@@ -124,16 +123,19 @@ type Sku struct {
 	Author      string `json:"author"`
 	Context     string `json:"context"`
 	Download    string `json:"download_url"`
-	//
-	zipfile string
-	appdir  string
+	appdir      string
 }
 
-func findSkus(src string) ([]*Sku, error) {
+// All the top level directories in the source directory are
+// considered the "root" of an application (or sku). The function
+// returns a list of the imported metadata.js files for each
+// application/sku.
 
-	sourceDir, err := filepath.Abs(src)
+func (system *System) LoadApps() error {
+
+	sourceDir, err := filepath.Abs(system.sourceDir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	sources, err := ioutil.ReadDir(sourceDir)
@@ -162,50 +164,37 @@ func findSkus(src string) ([]*Sku, error) {
 		skus = append(skus, &sku)
 	}
 
-	return skus, nil
+	system.Skus = skus
+	return nil
 }
 
-func toJson(skus []*Sku) (string, error) {
-	buf := new(bytes.Buffer)
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-
-	if err := enc.Encode(skus); err != nil {
-		return "", err
+func (system *System) CreateDownloads() error {
+	for _, sku := range system.Skus {
+		dest := filepath.Join(system.deployDir, sku.XRN+".zip")
+		dest, err := filepath.Abs(dest)
+		if err != nil {
+			return err
+		}
+		log.Printf("  - Bundling %v.", sku.Name)
+		if err := zipit(sku.appdir, dest); err != nil {
+			return err
+		}
 	}
-	return buf.String(), nil
-}
-
-//-----------------------------------------------------------------------------
-
-func blockUntilShutdownThenDo(fn func()) {
-	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, os.Kill, os.Interrupt, syscall.SIGTERM,
-		syscall.SIGKILL, syscall.SIGHUP)
-	v := <-sigChan
-	log.Printf("Signal: %v\n", v)
-	fn()
-}
-
-type System struct {
-	Skus      []*Sku
-	sourceDir string
-	deployDir string
-}
-
-func contexts(r *http.Request) []string {
-	path := r.URL.Path
-	path = strings.TrimPrefix(path, "/")
-	path = strings.TrimSuffix(path, "/")
-	return strings.Split(path, "/")
+	return nil
 }
 
 func (system *System) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("%v %v%v", r.Method, r.Host, r.URL.Path)
 
-	context := contexts(r)
+	mkContexts := func(r *http.Request) []string {
+		path := r.URL.Path
+		path = strings.TrimPrefix(path, "/")
+		path = strings.TrimSuffix(path, "/")
+		return strings.Split(path, "/")
+	}
+
+	context := mkContexts(r)
 
 	switch context[0] {
 
@@ -216,13 +205,8 @@ func (system *System) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			system.Skus[i].Download = path
 		}
 
-		data, err := toJson(system.Skus)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 		w.Header().Set("content-type", "application/json")
-		w.Write([]byte(data))
+		w.Write([]byte(system.String()))
 		return
 
 	case "download":
@@ -242,67 +226,79 @@ func (system *System) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func startupSequence() {
+func (system *System) String() string {
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
 
-	sourceDir := "source"
-	deployDir := "deploy"
+	if err := enc.Encode(system.Skus); err != nil {
+		return fmt.Sprintf("<%v>", err)
+	}
+	return buf.String()
+}
+
+// On start up, the application removes the old zipped store bundles
+// (skus) and recreates them based on the contents of a source
+// directory.
+
+func (system *System) Prepare() error {
+
+	if _, err := os.Stat(system.sourceDir); os.IsNotExist(err) {
+		log.Fatalf("Can't find store source directory: %v", system.sourceDir)
+		return err
+	}
+
+	if err := os.RemoveAll(system.deployDir); err != nil {
+		return err
+	}
+
+	if err := os.Mkdir(system.deployDir, 0755); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (system *System) Start() {
 
 	log.Println("Startup sequence.")
 
-	if _, err := os.Stat(sourceDir); os.IsNotExist(err) {
-		log.Fatalf("Can't find store source directory: %v", sourceDir)
+	if err := system.Prepare(); err != nil {
+		log.Fatalf("Unable to start: %v", err)
 	}
 
-	if err := os.RemoveAll(deployDir); err != nil {
+	if err := system.LoadApps(); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := os.Mkdir(deployDir, 0755); err != nil {
+	if err := system.CreateDownloads(); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("- Finding apps.")
-
-	skus, err := findSkus(sourceDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("- Preparing app artifacts.")
-	updates, err := generateArtifacts(deployDir, skus)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	render, err := toJson(updates)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(render)
+	log.Println(system)
 
 	server := http.Server{
-		Addr: ":60001",
-		Handler: &System{
-			Skus:      updates,
-			deployDir: deployDir,
-			sourceDir: sourceDir,
-		},
+		Addr:    ":60001",
+		Handler: system,
 	}
 
 	log.Fatal(server.ListenAndServe())
 }
 
-func shutdownSequence() {
+func (system *System) Stop() {
 	log.Println("Shutdown sequence.")
 }
 
 func main() {
 	log.Println("Welcome to Proxy App Store")
 
-	go startupSequence()
+	system := &System{sourceDir: "./source", deployDir: "./deploy"}
+
+	go system.Start()
 
 	blockUntilShutdownThenDo(func() {
-		shutdownSequence()
+		system.Stop()
 	})
 
 	log.Println("System halt.")
