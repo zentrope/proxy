@@ -109,7 +109,8 @@ func zipit(source, target string) error {
 
 type System struct {
 	Skus      []*Sku
-	Cache     map[string]time.Time
+	timestamp time.Time
+	clock     *time.Ticker
 	sourceDir string
 	deployDir string
 }
@@ -164,19 +165,77 @@ func (system *System) LoadApps() error {
 		skus = append(skus, &sku)
 	}
 
+	system.timestamp = time.Now()
 	system.Skus = skus
+	return nil
+}
+
+func (system *System) MonitorApps() {
+
+	// Blunt force: if anything changes in the app source directory,
+	// repackage and re-deploy everything.
+
+	recent := func(root string) (time.Time, error) {
+		var t time.Time
+		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if info.ModTime().After(t) {
+				t = info.ModTime()
+			}
+			return nil
+		})
+
+		return t, err
+	}
+
+	pass := func() error {
+		sourceDir, err := filepath.Abs(system.sourceDir)
+		if err != nil {
+			return err
+		}
+
+		t, err := recent(sourceDir)
+		if err != nil {
+			return err
+		}
+
+		if t.After(system.timestamp) {
+			log.Printf("Monitor: '%v' has been updated, and should be re-packaged.",
+				system.sourceDir)
+			system.LoadApps()
+			system.CreateDownloads()
+		}
+
+		return nil
+	}
+
+	c := system.clock.C
+	for _ = range c {
+		if err := pass(); err != nil {
+			log.Println("- ERROR: %v", err)
+		}
+	}
+}
+
+func (system *System) CreateDownload(sku *Sku) error {
+	dest := filepath.Join(system.deployDir, sku.XRN+".zip")
+	dest, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
+	log.Printf(" - Packaging %v.", sku.Name)
+	if err := zipit(sku.appdir, dest); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (system *System) CreateDownloads() error {
 	for _, sku := range system.Skus {
-		dest := filepath.Join(system.deployDir, sku.XRN+".zip")
-		dest, err := filepath.Abs(dest)
-		if err != nil {
-			return err
-		}
-		log.Printf("  - Bundling %v.", sku.Name)
-		if err := zipit(sku.appdir, dest); err != nil {
+		if err := system.CreateDownload(sku); err != nil {
 			return err
 		}
 	}
@@ -262,7 +321,7 @@ func (system *System) Prepare() error {
 
 func (system *System) Start() {
 
-	log.Println("Startup sequence.")
+	log.Println("Starting system.")
 
 	if err := system.Prepare(); err != nil {
 		log.Fatalf("Unable to start: %v", err)
@@ -276,7 +335,8 @@ func (system *System) Start() {
 		log.Fatal(err)
 	}
 
-	log.Println(system)
+	system.clock = time.NewTicker(11 * time.Second)
+	go system.MonitorApps()
 
 	server := http.Server{
 		Addr:    ":60001",
@@ -287,13 +347,24 @@ func (system *System) Start() {
 }
 
 func (system *System) Stop() {
-	log.Println("Shutdown sequence.")
+	log.Println("Stopping sequence.")
+	if system.clock != nil {
+		system.clock.Stop()
+	}
+
+}
+
+func NewSystem(source, target string) *System {
+	return &System{
+		sourceDir: source,
+		deployDir: target,
+	}
 }
 
 func main() {
-	log.Println("Welcome to Proxy App Store")
+	log.Println("Welcome to Proxy App Store (port 60001).")
 
-	system := &System{sourceDir: "./source", deployDir: "./deploy"}
+	system := NewSystem("./source", "./deploy")
 
 	go system.Start()
 
