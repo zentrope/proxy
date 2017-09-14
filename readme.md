@@ -1,10 +1,15 @@
 # Proxy
 
-Experiments with custom, dynamic web-proxies.
+Experiments with custom, dynamic web-proxies. A launchpad or
+application shell kind of thing.
 
 ## Rationale
 
 A web application that can:
+
+- Extend a site with new applications (without having to re-build
+  anything) by uploading documents like in the olden times of regular
+  web-servers.
 
 - Act as a reverse-proxy for one (or more) back-end services, such
   that you can have a configuration like:
@@ -49,6 +54,62 @@ Finally, the idea is that understanding the decisions here at best
 gets me (or you) further along in the process, and at worst,
 demystifies the ideas enough to figure out what not to do, or how to
 do it better.
+
+## Build and use (dev environment)
+
+This app an experiment so there's no way at present to configure
+different back end services or change ports without directly editing
+the code.
+
+Use the standard Golang mechanism for importing code:
+
+    $ go get -d github.com/zentrope/proxy
+
+then `cd` to the source location:
+
+    $ cd $GOPATH/github.com/zentrope/proxy
+
+then initialize the project:
+
+    $ make init
+
+which should pull in `go-dep` if it's not already there, then download
+all the vendored dependencies.
+
+The whole experiment is really a suite of three processes, the `proxy`
+itself, and a trivia sample `app-store` process as well as a really
+trivial sample `backend` data serving process.
+
+So, open three terminals:
+
+    # terminal 1
+    make run-backend
+
+and
+
+    # terminal 2
+    $ make run-store
+
+and:
+
+    # terminal 3
+    $ go run main.go
+
+Once those are all running, you can open a browser to port `:8080` on
+your machine to view the application:
+
+    $ open http://localhost:8080
+
+and log in using the hard-coded user/pass:
+
+    test@example.com/test1234
+
+and you should be in. Click the icons to go to the various sample
+"stock" apps, and also using the App Store menu link to install or
+uninstall applications. The app uses a push-notification system, so
+you should be able to have more than one browser up if you want to see
+apps appear and disappear as you un/install them via the App Store
+screen.
 
 ## How to make a back-end service
 
@@ -180,6 +241,7 @@ must be authenticated.
 
 ## License
 
+_I'm up for re-licensing this, but you have to talk to me first._
 
 Copyright (C) 2017 Keith Irwin
 
