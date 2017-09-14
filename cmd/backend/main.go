@@ -23,9 +23,111 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/zentrope/proxy/cmd/backend/data"
 )
+
+//-----------------------------------------------------------------------------
+
+const Scans = `
+[
+	{
+		"process": "proc:gl:904e331d-1853-4472-8694-79410cbea625",
+		"isolinear_matrix": "10.0.1/24",
+		"start": "2017-05-05 11:05:00",
+		"stop": "2017-07-04 04:05:00",
+		"schedule": {
+			"month": "*",
+			"dayOfWeek": "*",
+			"hours": "*",
+			"minutes": "*",
+			"seconds": "*",
+			"dayOfMonth": "*"
+		}
+	},
+	{
+		"process": "proc:gl:cc109dae-eb7e-4e99-b848-70c7cdb56829",
+		"isolinear_matrix": "10.0.2/24",
+		"start": "2015-09-12 11:05:00",
+		"stop": "2018-11-04 04:05:00",
+		"schedule": {
+			"month": "5,6,7",
+			"dayOfWeek": "4,5",
+			"hours": "4",
+			"minutes": "20",
+			"seconds": "*",
+			"dayOfMonth": "*"
+		}
+	},
+	{
+		"process": "proc:gl:bf8f8928-9abb-46b7-b5ed-b5d5dad0bc5e",
+		"isolinear_matrix": "10.0.3/24",
+		"start": "2017-05-05 11:05:00",
+		"stop": "2017-07-04 04:05:00",
+		"schedule": {
+			"month": "*",
+			"dayOfWeek": "4",
+			"hours": "7",
+			"minutes": "17",
+			"seconds": "*",
+			"dayOfMonth": "*"
+		}
+	}
+]
+`
+
+const Schedule = `
+[
+	{
+		"id": "1",
+		"status": "active",
+		"job_id": "0001",
+		"name": "Flush Containment System",
+		"description": "Purge ionized dilithium particles Sundays at 3AM.",
+		"process": "proc:gl:904e331d-1853-4472-8694-79410cbea625",
+		"schedule": {
+			"minute": "15",
+			"hour": "3",
+			"month": "1",
+			"year": "*",
+			"date": "*",
+			"day": "7"
+		}
+	},
+	{
+		"id": "2",
+		"status": "active",
+		"job_id": "0002",
+		"name": "Phase Inverter Report",
+		"description": "Run the phase inverter report at 5:10 AM every morning.",
+		"component": "proc:gl:904e331d-1853-4472-8694-79410cbea625",
+		"schedule": {
+			"minute": "10",
+			"hour": "5",
+			"month": "*",
+			"year": "*",
+			"date": "3",
+			"day": "*"
+		}
+	},
+	{
+		"id": "3",
+		"status": "active",
+		"job_id": "0003",
+		"name": "Clean Holo Emitter Arrays",
+		"description": "A clean holo emitter array is a lovely thing.",
+		"component": "proc:gl:bf8f8928-9abb-46b7-b5ed-b5d5dad0bc5e",
+		"schedule": {
+			"minute": "10",
+			"hour": "5",
+			"month": "*",
+			"year": "*",
+			"date": "*",
+			"day": "21"
+		}
+	}
+]
+`
+
+//-----------------------------------------------------------------------------
 
 type ServerConfig struct {
 	port    string
@@ -38,8 +140,8 @@ func writeFile(w http.ResponseWriter, content string) {
 }
 
 var routeMap = map[string]string{
-	"scan":     data.Scans,
-	"schedule": data.Schedule,
+	"scan":     Scans,
+	"schedule": Schedule,
 }
 
 func (s ServerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
