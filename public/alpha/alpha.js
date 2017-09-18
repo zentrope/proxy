@@ -43,8 +43,6 @@ let __SymCounter = 1;
 const genSym = () =>
   "G_" + __SymCounter++;
 
-const h = preact.h
-const Component = preact.Component
 
 const orStar = (col) =>
   col === "" ? "*" : col
@@ -73,23 +71,37 @@ const renderDate = (date) => {
   return moment(date).format("DD MMM YY - hh:mm A")
 }
 
-class Table extends Component {
-  render() {
-    const { scans } = this.props
-    return h('div', {className: "TableContainer"},
-             h('table', {},
-               h('thead', {},
-                 h('tr', {},
-                   h('th', {}, "matrix"),
-                   h('th', {}, "schedule"),
-                   h('th', {}, "start"),
-                   h('th', {}, "stop") )),
-               h('tbody', {},
-                 scans.map(s => h('tr', {key: genSym()},
-                                  h('td', {}, s.isolinear_matrix),
-                                  h('td', {}, renderSchedule(s.schedule)),
-                                  h('td', {}, renderDate(s.start)),
-                                  h('td', {}, renderDate(s.stop)) )))))
+const h = preact.h
+const Component = preact.Component
+
+// Does this make the non-JSX markup any clearer?
+const Section = (m, ...c) => preact.h('section', m, c)
+const Button = (m, ...c)  => preact.h('button', m, c)
+const Div = (m, ...c)     => preact.h('div', m, c)
+const H1 = (m, ...c)      => preact.h('h1', m, c)
+const Table = (m, ...c)   => preact.h('table', m, c)
+const Thead = (m, ...c)   => preact.h('thead', m, c)
+const Tbody = (m, ...c)   => preact.h('tbody', m, c)
+const Tr = (m, ...c)      => preact.h('tr', m, c)
+const Td = (m, ...c)      => preact.h('td', m, c)
+const Th = (m, ...c)      => preact.h('th', m, c)
+
+class Lister extends Component {
+  render({scans}) {
+    return Div({class: "TableContainer"},
+             Table({},
+               Thead({},
+                 Tr({},
+                   Th({}, "matrix"),
+                   Th({}, "schedule"),
+                   Th({}, "start"),
+                   Th({}, "stop") )),
+               Tbody({},
+                 scans.map(s => Tr({key: genSym()},
+                                  Td({}, s.isolinear_matrix),
+                                  Td({}, renderSchedule(s.schedule)),
+                                  Td({}, renderDate(s.start)),
+                                  Td({}, renderDate(s.stop)) )))))
   }
 }
 
@@ -106,18 +118,19 @@ class UI extends Component {
 
   render() {
     const {scans} = this.state
-    return h('section', {},
-             h('button', {onClick: () => window.location.href = '/'}, "Home"),
-             h('div', {className: 'WorkArea'},
-               h('h1', {}, 'Isolinear Matrix Scans'),
-               h(Table, {scans: scans}, null)))
+    return Section({},
+             Button({onClick: () => window.location.href = '/'}, "Home"),
+             Div({class: 'WorkArea'},
+               H1({}, 'Isolinear Matrix Scans'),
+               h(Lister, {scans: scans}, null)))
   }
 }
 
-const render = () =>
- preact.render(
-    h(UI),
-    document.getElementById('root') )
+const render = () => {
+  const node = document.body
+  const root = node.querySelector('div#root')
+  preact.render(h(UI), node, root)
+}
 
 const main = () => {
   console.log("Welcome to '" + getContext() + "'.")
