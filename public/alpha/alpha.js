@@ -35,6 +35,31 @@ const getData = (callback) => {
 }
 
 //-----------------------------------------------------------------------------
+// HTML tag functions
+//-----------------------------------------------------------------------------
+
+(function genHTML() {
+  // e.g., Section({class: "Foo"}, Div({}, H1({}, "Hello")))
+
+  function partial(fn) {
+    // http://benalman.com/news/2012/09/partial-application-in-javascript/
+    let slice = Array.prototype.slice
+    let args = slice.call(arguments, 1)
+
+    return function() {
+      return fn.apply(this, args.concat(slice.call(arguments, 0)))
+    }
+  }
+
+  let elements = [
+    "Section", "Button", "Div", "H1", "Table",
+    "Thead", "Tbody", "Tr", "Td", "Th"
+  ]
+
+  elements.map(e => this[e] = partial(preact.h, e.toLowerCase()))
+})();
+
+//-----------------------------------------------------------------------------
 // Rendering
 //-----------------------------------------------------------------------------
 
@@ -42,7 +67,6 @@ let __SymCounter = 1;
 
 const genSym = () =>
   "G_" + __SymCounter++;
-
 
 const orStar = (col) =>
   col === "" ? "*" : col
@@ -71,30 +95,9 @@ const renderDate = (date) => {
   return moment(date).format("DD MMM YY - hh:mm A")
 }
 
-function partial(fn) {
-  // http://benalman.com/news/2012/09/partial-application-in-javascript/
-  let slice = Array.prototype.slice
-  let args = slice.call(arguments, 1)
-
-  return function() {
-    return fn.apply(this, args.concat(slice.call(arguments, 0)))
-  }
-}
-
 const h = preact.h
 const Component = preact.Component
 
-// Does this make the non-JSX markup any clearer?
-const Section = partial(h, 'section')
-const Button  = partial(h, 'button')
-const Div     = partial(h, 'div')
-const H1      = partial(h, 'h1')
-const Table   = partial(h, 'table')
-const Thead   = partial(h, 'thead')
-const Tbody   = partial(h, 'tbody')
-const Tr      = partial(h, 'tr')
-const Td      = partial(h, 'td')
-const Th      = partial(h, 'th')
 
 class Lister extends Component {
   render({scans}) {
