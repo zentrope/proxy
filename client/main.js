@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-const e = React.createElement
+const e = preact.createElement
+const component = preact.Component
 const Div='div'
 const Section='section'
 const H1='h1'
@@ -195,18 +196,18 @@ class Client {
 
 //-----------------------------------------------------------------------------
 
-class LoadingPhase extends React.PureComponent {
+class LoadingPhase extends component {
 
   render() {
     return (
-      e(Div, {className: "Loading"},
+      e(Div, {class: "Loading"},
         e(H1, {}, "Loading...")))
   }
 }
 
 //-----------------------------------------------------------------------------
 
-class LoginPhase extends React.PureComponent {
+class LoginPhase extends component {
 
   constructor(props) {
     super(props)
@@ -275,13 +276,13 @@ class LoginPhase extends React.PureComponent {
     )
 
     return (
-      e(Section, {className: "LoginForm"},
-        e(Section, {className: "LoginPanel"},
+      e(Section, {class: "LoginForm"},
+        e(Section, {class: "LoginPanel"},
           e(H1, {}, "Sign in to the Launchpad"),
-          e(Div, {className: "Error"}, error),
-          e(Div, {className: "Control"}, submit),
-          e(Div, {className: "Widgets"},
-            e(Div, {className: "Widget"},
+          e(Div, {class: "Error"}, error),
+          e(Div, {class: "Control"}, submit),
+          e(Div, {class: "Widgets"},
+            e(Div, {class: "Widget"},
               e(Input, {id: "user",
                         type: "text",
                         name: "user",
@@ -291,7 +292,7 @@ class LoginPhase extends React.PureComponent {
                         placeholder: "User ID",
                         onKeyDown: this.handleKeyDown,
                         onChange: this.handleChange})),
-            e(Div, {className: "Widget Pass"},
+            e(Div, {class: "Widget Pass"},
               e(Input, {type: "password",
                         name: "pass",
                         value: pass,
@@ -305,67 +306,67 @@ class LoginPhase extends React.PureComponent {
 
 //-----------------------------------------------------------------------------
 
-class WorkArea extends React.PureComponent {
+class WorkArea extends component {
   render() {
     return (
-      e(Section, {className: "WorkArea"},
+      e(Section, {class: "WorkArea"},
         this.props.children))
   }
 }
 
-class TitleBar extends React.PureComponent {
+class TitleBar extends component {
 
   render() {
     const { name } = this.props
 
     return (
-      e(Section, {className: "TitleBar"},
-        e(Div, {className: "Name"}, name))
+      e(Section, {class: "TitleBar"},
+        e(Div, {class: "Name"}, name))
     )
   }
 }
 
 
-class AppIcon extends React.PureComponent {
+class AppIcon extends component {
 
   render() {
     const { icon } = this.props
 
     return (
-      e(Div, {className: "AppIcon"},
+      e(Div, {class: "AppIcon"},
         e(Div, {dangerouslySetInnerHTML: {__html: icon}})))
   }
 }
 
-class Application extends React.PureComponent {
+class Application extends component {
 
   render() {
     const { application, onLaunch } = this.props
 
     return (
-      e(Div, {className: "Application"},
+      e(Div, {class: "Application"},
         e(Div, {onClick: () => onLaunch(application.context)},
           e(AppIcon, {icon: application.icon}),
-          e(Div, {className: "Title"}, application.name),
-          e(Div, {className: "Context"}, application.version))))
+          e(Div, {class: "Title"}, application.name),
+          e(Div, {class: "Context"}, application.version))))
   }
 }
 
-class LaunchPad extends React.PureComponent {
+class LaunchPad extends component {
 
   render() {
     const { apps, onLaunch } = this.props
 
     return (
       e(WorkArea, {},
-        e(Section, {className: "LaunchPad"},
+        e(Section, {class: "LaunchPad"},
           apps.map(a => e(Application, {key: a.context,
                                         application: a,
                                         onLaunch: onLaunch})))))
   }
 }
 
-class Appstore extends React.PureComponent {
+class Appstore extends component {
   render() {
     const { apps, onClick } = this.props
 
@@ -387,7 +388,7 @@ class Appstore extends React.PureComponent {
       e(WorkArea, {},
         e(H1, {}, "App Store"),
         e(P, {}, "This is an admin function."),
-        e(Div, {className: 'Tabular'},
+        e(Div, {class: 'Tabular'},
           e(Table, {},
             e(Thead, {},
               e(Tr, {},
@@ -395,7 +396,7 @@ class Appstore extends React.PureComponent {
                 e(Th, {width: "10%"}, "Version"),
                 e(Th, {width: "10%"}, "Date"),
                 e(Th, {}, "Description"),
-                e(Th, {width: "10%", className: 'Center'}, "Option"))),
+                e(Th, {width: "10%", class: 'Center'}, "Option"))),
             e(Tbody, {},
               apps.map(a =>
                 e(Tr, {key: a.xrn},
@@ -403,7 +404,7 @@ class Appstore extends React.PureComponent {
                   e(Td, {}, a.version),
                   e(Td, {}, a.date),
                   e(Td, {}, a.description),
-                  e(Td, {className: 'Center'},
+                  e(Td, {class: 'Center'},
                     a.is_installed ? (
                       e(Button, {onClick: remover(a)}, "Remove")
                     ) : (
@@ -428,7 +429,7 @@ const loadSvg = (file, callback) => {
     .catch(err => console.log(err))
 }
 
-class Icon extends React.PureComponent {
+class Icon extends component {
 
   constructor(props) {
     super(props)
@@ -457,7 +458,7 @@ class Icon extends React.PureComponent {
   }
 }
 
-class MenuItem extends React.PureComponent {
+class MenuItem extends component {
   render() {
     const { name, event, onClick, selected } = this.props
 
@@ -467,14 +468,14 @@ class MenuItem extends React.PureComponent {
     const className = selected === event ? "MenuItem Focus" : "MenuItem"
 
     return (
-      e(Div, {className: className, name: event, onClick: doit},
-        e(Div, {className: "Icon"}, e(Icon, {code: event})),
-        e(Div, {className: "Name"}, name))
+      e(Div, {class: className, name: event, onClick: doit},
+        e(Div, {class: "Icon"}, e(Icon, {code: event})),
+        e(Div, {class: "Name"}, name))
       )
   }
 }
 
-class MenuBar extends React.PureComponent {
+class MenuBar extends component {
 
   render() {
     const { onClick, selected, menus } = this.props;
@@ -484,7 +485,7 @@ class MenuBar extends React.PureComponent {
     }
 
     return (
-      e(Section, {className: "MenuBar"},
+      e(Section, {class: "MenuBar"},
         menus.map(m => e(MenuItem, {
           key: m.name,
           name: m.name,
@@ -496,7 +497,7 @@ class MenuBar extends React.PureComponent {
   }
 }
 
-class MainPhase extends React.PureComponent {
+class MainPhase extends component {
 
   constructor(props) {
     super(props)
@@ -530,11 +531,11 @@ class MainPhase extends React.PureComponent {
                e(Appstore, {apps: apps.app_store, onClick: onCommand})
 
     return (
-      e(Section, {className: "ApplicationShell"},
+      e(Section, {class: "ApplicationShell"},
         e(TitleBar, {name: "Launch Pad"}),
         e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
         view,
-        e(Section, {className: 'Footer'})
+        e(Section, {class: 'Footer'})
       ))
   }
 }
@@ -545,7 +546,7 @@ const LOADING = 0
 const LOGGED_OUT = -1
 const LOGGED_IN = 1
 
-class App extends React.PureComponent {
+class App extends component {
 
   constructor(props) {
     super(props)
@@ -656,11 +657,11 @@ class App extends React.PureComponent {
   }
 }
 
-
-const render = () =>
-  ReactDOM.render(
-    e(App),
-    document.getElementById('root'))
+const render = () => {
+  const node = document.body
+  const element = node.querySelector('div#root')
+  preact.render(e(App), node, element)
+}
 
 const main = () => {
   console.log("Welcome to the Launch Pad")
