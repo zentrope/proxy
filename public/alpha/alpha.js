@@ -71,20 +71,30 @@ const renderDate = (date) => {
   return moment(date).format("DD MMM YY - hh:mm A")
 }
 
+function partial(fn) {
+  // http://benalman.com/news/2012/09/partial-application-in-javascript/
+  let slice = Array.prototype.slice
+  let args = slice.call(arguments, 1)
+
+  return function() {
+    return fn.apply(this, args.concat(slice.call(arguments, 0)))
+  }
+}
+
 const h = preact.h
 const Component = preact.Component
 
 // Does this make the non-JSX markup any clearer?
-const Section = (m, ...c) => preact.h('section', m, c)
-const Button = (m, ...c)  => preact.h('button', m, c)
-const Div = (m, ...c)     => preact.h('div', m, c)
-const H1 = (m, ...c)      => preact.h('h1', m, c)
-const Table = (m, ...c)   => preact.h('table', m, c)
-const Thead = (m, ...c)   => preact.h('thead', m, c)
-const Tbody = (m, ...c)   => preact.h('tbody', m, c)
-const Tr = (m, ...c)      => preact.h('tr', m, c)
-const Td = (m, ...c)      => preact.h('td', m, c)
-const Th = (m, ...c)      => preact.h('th', m, c)
+const Section = partial(h, 'section')
+const Button  = partial(h, 'button')
+const Div     = partial(h, 'div')
+const H1      = partial(h, 'h1')
+const Table   = partial(h, 'table')
+const Thead   = partial(h, 'thead')
+const Tbody   = partial(h, 'tbody')
+const Tr      = partial(h, 'tr')
+const Td      = partial(h, 'td')
+const Th      = partial(h, 'th')
 
 class Lister extends Component {
   render({scans}) {
