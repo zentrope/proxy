@@ -43,7 +43,8 @@ let __SymCounter = 1;
 const genSym = () =>
   "G_" + __SymCounter++;
 
-const e = React.createElement
+const h = preact.h
+const Component = preact.Component
 
 const orStar = (col) =>
   col === "" ? "*" : col
@@ -72,27 +73,27 @@ const renderDate = (date) => {
   return moment(date).format("DD MMM YY - hh:mm A")
 }
 
-class Table extends React.PureComponent {
+class Table extends Component {
   render() {
     const { scans } = this.props
-    return e('div', {className: "TableContainer"},
-             e('table', {},
-               e('thead', {},
-                 e('tr', {},
-                   e('th', {}, "matrix"),
-                   e('th', {}, "schedule"),
-                   e('th', {}, "start"),
-                   e('th', {}, "stop") )),
-               e('tbody', {},
-                 scans.map(s => e('tr', {key: genSym()},
-                                  e('td', {}, s.isolinear_matrix),
-                                  e('td', {}, renderSchedule(s.schedule)),
-                                  e('td', {}, renderDate(s.start)),
-                                  e('td', {}, renderDate(s.stop)) )))))
+    return h('div', {className: "TableContainer"},
+             h('table', {},
+               h('thead', {},
+                 h('tr', {},
+                   h('th', {}, "matrix"),
+                   h('th', {}, "schedule"),
+                   h('th', {}, "start"),
+                   h('th', {}, "stop") )),
+               h('tbody', {},
+                 scans.map(s => h('tr', {key: genSym()},
+                                  h('td', {}, s.isolinear_matrix),
+                                  h('td', {}, renderSchedule(s.schedule)),
+                                  h('td', {}, renderDate(s.start)),
+                                  h('td', {}, renderDate(s.stop)) )))))
   }
 }
 
-class UI extends React.PureComponent {
+class UI extends Component {
 
   constructor(props) {
     super(props)
@@ -105,21 +106,21 @@ class UI extends React.PureComponent {
 
   render() {
     const {scans} = this.state
-    return e('section', {},
-             e('button', {onClick: () => window.location.href = '/'}, "Home"),
-             e('div', {className: 'WorkArea'},
-               e('h1', {}, 'Isolinear Matrix Scans'),
-               e(Table, {scans: scans}, null)))
+    return h('section', {},
+             h('button', {onClick: () => window.location.href = '/'}, "Home"),
+             h('div', {className: 'WorkArea'},
+               h('h1', {}, 'Isolinear Matrix Scans'),
+               h(Table, {scans: scans}, null)))
   }
 }
 
 const render = () =>
-  ReactDOM.render(
-    e(UI, {}, null),
+ preact.render(
+    h(UI),
     document.getElementById('root') )
 
 const main = () => {
-  console.log("Welcome to ", getContext())
+  console.log("Welcome to '" + getContext() + "'.")
   console.log("using api:", API)
   render()
 }
