@@ -14,21 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-const e = preact.createElement
-const component = preact.Component
-const Div='div'
-const Section='section'
-const H1='h1'
-const P='p'
-const Input='input'
-const Button='button'
-const Img='img'
-const Table='table'
-const Tbody='tbody'
-const Thead='thead'
-const Tr='tr'
-const Th='th'
-const Td='td'
 
 //-----------------------------------------------------------------------------
 
@@ -162,18 +147,18 @@ class Client {
     })
 
     fetch(this.url + '/command', query)
-      .then(res => this.checkStatus(res))
-      .then(res =>  { if (success) success('ok') })
-      .catch(err => { if (failure) failure(err) })
+                    .then(res => this.checkStatus(res))
+                    .then(res =>  { if (success) success('ok') })
+                    .catch(err => { if (failure) failure(err) })
   }
 
   fetchApplications(callback) {
     let query = this.__authorize({method: 'GET'})
     fetch(this.url + "/query", query)
-      .then(res => this.checkStatus(res))
-      .then(res => res.json())
-      .then(data => callback(data))
-      .catch(err => this.errorDelegate(err))
+                    .then(res => this.checkStatus(res))
+                    .then(res => res.json())
+                    .then(data => callback(data))
+                    .catch(err => this.errorDelegate(err))
   }
 
   startNotifier(handlerMap) {
@@ -196,12 +181,39 @@ class Client {
 
 //-----------------------------------------------------------------------------
 
+const e = preact.createElement
+const component = preact.Component
+
+const _ = (function () {
+
+  // e.g., Section({class: "Foo"}, Div({}, H1({}, "Hello")))
+
+  function partial(fn) {
+    // http://benalman.com/news/2012/09/partial-application-in-javascript/
+    let slice = Array.prototype.slice
+    let args = slice.call(arguments, 1)
+
+    return function() {
+      return fn.apply(this, args.concat(slice.call(arguments, 0)))
+    }
+  }
+
+  const elements = [
+    "Section", "Button", "Div", "H1", "Table",
+    "Thead", "Tbody", "Tr", "Td", "Th", "P", "Input", "Img"
+  ]
+
+  elements.map(name => this[name] = partial(preact.h, name.toLowerCase()))
+})()
+
+//-----------------------------------------------------------------------------
+
 class LoadingPhase extends component {
 
   render() {
     return (
-      e(Div, {class: "Loading"},
-        e(H1, {}, "Loading...")))
+      Div({class: "Loading"},
+          H1({}, "Loading...")))
   }
 }
 
@@ -270,37 +282,37 @@ class LoginPhase extends component {
     var { user, pass, error } = this.state
 
     const submit = this.isSubmittable() ? (
-      e(Button, {onClick: this.handleSubmit}, "Sign in")
+      Button({onClick: this.handleSubmit}, "Sign in")
     ) : (
       null
     )
 
     return (
-      e(Section, {class: "LoginForm"},
-        e(Section, {class: "LoginPanel"},
-          e(H1, {}, "Sign in to the Launchpad"),
-          e(Div, {class: "Error"}, error),
-          e(Div, {class: "Control"}, submit),
-          e(Div, {class: "Widgets"},
-            e(Div, {class: "Widget"},
-              e(Input, {id: "user",
-                        type: "text",
-                        name: "user",
-                        value: user,
-                        autoComplete: "off",
-                        autoFocus: true,
-                        placeholder: "User ID",
-                        onKeyDown: this.handleKeyDown,
-                        onChange: this.handleChange})),
-            e(Div, {class: "Widget Pass"},
-              e(Input, {type: "password",
-                        name: "pass",
-                        value: pass,
-                        autoComplete: "off",
-                        autoFocus: false,
-                        placeholder: "Password",
-                        onKeyDown: this.handleKeyDown,
-                        onChange: this.handleChange}))))))
+      Section({class: "LoginForm"},
+        Section({class: "LoginPanel"},
+          H1({}, "Sign in to the Launchpad"),
+          Div({class: "Error"}, error),
+          Div({class: "Control"}, submit),
+          Div({class: "Widgets"},
+            Div({class: "Widget"},
+              Input({id: "user",
+                     type: "text",
+                     name: "user",
+                     value: user,
+                     autoComplete: "off",
+                     autoFocus: true,
+                     placeholder: "User ID",
+                     onKeyDown: this.handleKeyDown,
+                     onChange: this.handleChange})),
+            Div({class: "Widget Pass"},
+              Input({type: "password",
+                     name: "pass",
+                     value: pass,
+                     autoComplete: "off",
+                     autoFocus: false,
+                     placeholder: "Password",
+                     onKeyDown: this.handleKeyDown,
+                     onChange: this.handleChange}))))))
   }
 }
 
@@ -309,7 +321,7 @@ class LoginPhase extends component {
 class WorkArea extends component {
   render() {
     return (
-      e(Section, {class: "WorkArea"},
+      Section({class: "WorkArea"},
         this.props.children))
   }
 }
@@ -320,8 +332,8 @@ class TitleBar extends component {
     const { name } = this.props
 
     return (
-      e(Section, {class: "TitleBar"},
-        e(Div, {class: "Name"}, name))
+      Section({class: "TitleBar"},
+        Div({class: "Name"}, name))
     )
   }
 }
@@ -333,8 +345,8 @@ class AppIcon extends component {
     const { icon } = this.props
 
     return (
-      e(Div, {class: "AppIcon"},
-        e(Div, {dangerouslySetInnerHTML: {__html: icon}})))
+      Div({class: "AppIcon"},
+        Div({dangerouslySetInnerHTML: {__html: icon}})))
   }
 }
 
@@ -344,11 +356,11 @@ class Application extends component {
     const { application, onLaunch } = this.props
 
     return (
-      e(Div, {class: "Application"},
-        e(Div, {onClick: () => onLaunch(application.context)},
-          e(AppIcon, {icon: application.icon}),
-          e(Div, {class: "Title"}, application.name),
-          e(Div, {class: "Context"}, application.version))))
+      Div({class: "Application"},
+          Div({onClick: () => onLaunch(application.context)},
+              e(AppIcon, {icon: application.icon}),
+              Div({class: "Title"}, application.name),
+              Div({class: "Context"}, application.version))))
   }
 }
 
@@ -359,10 +371,10 @@ class LaunchPad extends component {
 
     return (
       e(WorkArea, {},
-        e(Section, {class: "LaunchPad"},
-          apps.map(a => e(Application, {key: a.context,
-                                        application: a,
-                                        onLaunch: onLaunch})))))
+        Section({class: "LaunchPad"},
+                apps.map(a => e(Application, {key: a.context,
+                                              application: a,
+                                              onLaunch: onLaunch})))))
   }
 }
 
@@ -386,30 +398,30 @@ class Appstore extends component {
 
     return (
       e(WorkArea, {},
-        e(H1, {}, "App Store"),
-        e(P, {}, "This is an admin function."),
-        e(Div, {class: 'Tabular'},
-          e(Table, {},
-            e(Thead, {},
-              e(Tr, {},
-                e(Th, {width: "15%"}, "Name"),
-                e(Th, {width: "10%"}, "Version"),
-                e(Th, {width: "10%"}, "Date"),
-                e(Th, {}, "Description"),
-                e(Th, {width: "10%", class: 'Center'}, "Option"))),
-            e(Tbody, {},
-              apps.map(a =>
-                e(Tr, {key: a.xrn},
-                  e(Td, {}, a.name),
-                  e(Td, {}, a.version),
-                  e(Td, {}, a.date),
-                  e(Td, {}, a.description),
-                  e(Td, {class: 'Center'},
-                    a.is_installed ? (
-                      e(Button, {onClick: remover(a)}, "Remove")
-                    ) : (
-                      e(Button, {onClick: installer(a)}, "Install"))
-                  )))))))
+        H1({}, "App Store"),
+        P({}, "This is an admin function."),
+        Div({class: 'Tabular'},
+            Table({},
+                  Thead({},
+                        Tr({},
+                           Th({width: "15%"}, "Name"),
+                           Th({width: "10%"}, "Version"),
+                           Th({width: "10%"}, "Date"),
+                           Th({}, "Description"),
+                           Th({width: "10%", class: 'Center'}, "Option"))),
+                  Tbody({},
+                        apps.map(a =>
+                          Tr({key: a.xrn},
+                             Td({}, a.name),
+                             Td({}, a.version),
+                             Td({}, a.date),
+                             Td({}, a.description),
+                             Td({class: 'Center'},
+                                a.is_installed ? (
+                                  Button({onClick: remover(a)}, "Remove")
+                                ) : (
+                                  Button({onClick: installer(a)}, "Install"))
+                             )))))))
     )
   }
 }
@@ -453,7 +465,7 @@ class Icon extends component {
     const { icon } = this.state
 
     return (
-      e(Div, {dangerouslySetInnerHTML: {__html: icon}})
+      Div({dangerouslySetInnerHTML: {__html: icon}})
     )
   }
 }
@@ -468,10 +480,10 @@ class MenuItem extends component {
     const className = selected === event ? "MenuItem Focus" : "MenuItem"
 
     return (
-      e(Div, {class: className, name: event, onClick: doit},
-        e(Div, {class: "Icon"}, e(Icon, {code: event})),
-        e(Div, {class: "Name"}, name))
-      )
+      Div({class: className, name: event, onClick: doit},
+          Div({class: "Icon"}, e(Icon, {code: event})),
+          Div({class: "Name"}, name))
+    )
   }
 }
 
@@ -485,14 +497,14 @@ class MenuBar extends component {
     }
 
     return (
-      e(Section, {class: "MenuBar"},
-        menus.map(m => e(MenuItem, {
-          key: m.name,
-          name: m.name,
-          event: m.event,
-          onClick: onItemClick,
-          selected: selected
-        })))
+      Section({class: "MenuBar"},
+              menus.map(m => e(MenuItem, {
+                key: m.name,
+                name: m.name,
+                event: m.event,
+                onClick: onItemClick,
+                selected: selected
+              })))
     )
   }
 }
@@ -531,11 +543,11 @@ class MainPhase extends component {
                e(Appstore, {apps: apps.app_store, onClick: onCommand})
 
     return (
-      e(Section, {class: "ApplicationShell"},
-        e(TitleBar, {name: "Launch Pad"}),
-        e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
-        view,
-        e(Section, {class: 'Footer'})
+      Section({class: "ApplicationShell"},
+              e(TitleBar, {name: "Launch Pad"}),
+              e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
+              view,
+              Section({class: 'Footer'})
       ))
   }
 }
