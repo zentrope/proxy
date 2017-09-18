@@ -199,22 +199,25 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 	client := NewClient(token, conn)
 	proxy.clienthub.Add(client)
 
-	log.Printf(" - socket.open: %v", token)
-	log.Printf(" - client: %v", client)
+	viewer, _ := DecodeAuthToken(token)
+	log.Printf("- socket.open: [%v]", viewer.Email)
 
 	for {
 		_, bytes, err := conn.ReadMessage()
 		if err != nil {
-			log.Printf(" - socket.error: %v", err)
+			if websocket.IsUnexpectedCloseError(err,
+				websocket.CloseNormalClosure,
+				websocket.CloseGoingAway,
+				websocket.CloseNoStatusReceived,
+				websocket.CloseAbnormalClosure) {
+				log.Printf("- socket.error: [%v] %v", viewer.Email, err)
+			}
 			break
 		}
 
-		// message := string(bytes)
-		// log.Printf(" - socket.read: %v", message)
-
 		var msg map[string]string
 		if err := json.Unmarshal(bytes, &msg); err != nil {
-			log.Printf(" - socket.msg.err: %v", err)
+			log.Printf("- socket.msg.err: [%v] %v", viewer.Email, err)
 			continue
 		}
 
@@ -227,7 +230,7 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 	}
 
 	proxy.clienthub.Delete(client)
-	log.Printf(" - socket.closed: %v", token)
+	log.Printf("- socket.closed: [%v]", viewer.Email)
 }
 
 //-----------------------------------------------------------------------------

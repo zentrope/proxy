@@ -18,7 +18,6 @@ package internal
 
 import (
 	"fmt"
-	"log"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -27,7 +26,7 @@ var SECRET = []byte("should be in config file")
 
 const BAD_AUTH_MSG = "Not found."
 
-type ViewerClaims struct {
+type Viewer struct {
 	Id    string `json:"uuid"`
 	Email string `json:"email"`
 	jwt.StandardClaims
@@ -35,7 +34,7 @@ type ViewerClaims struct {
 
 func MakeAuthToken(user *User) (string, error) {
 
-	claims := ViewerClaims{
+	claims := Viewer{
 		user.Id,
 		user.Email,
 		jwt.StandardClaims{
@@ -51,21 +50,30 @@ func MakeAuthToken(user *User) (string, error) {
 	return tokenString, nil
 }
 
+func DecodeAuthToken(token string) (*Viewer, error) {
+	result, err := jwtdecode(token)
+	return result.Claims.(*Viewer), err
+}
+
 func IsValidAuthToken(tokenString string) (bool, error) {
 
-	if tokenString == "" {
-		log.Printf(" [x] auth.error: Token not found.")
-		return false, fmt.Errorf(BAD_AUTH_MSG)
-	}
-
-	token, err := jwt.ParseWithClaims(tokenString, &ViewerClaims{}, checkAlgKey())
+	token, err := jwtdecode(tokenString)
 
 	if err != nil {
-		log.Printf(" [x] auth.error: %v", err)
+		//log.Printf(" [x] auth.error: %v", err)
 		return false, fmt.Errorf(BAD_AUTH_MSG)
 	}
 
 	return token.Valid, nil
+}
+
+func jwtdecode(tokenString string) (*jwt.Token, error) {
+	if tokenString == "" {
+		//log.Printf(" [x] auth.error: Token not found.")
+		return nil, fmt.Errorf(BAD_AUTH_MSG)
+	}
+
+	return jwt.ParseWithClaims(tokenString, &Viewer{}, checkAlgKey())
 }
 
 func checkAlgKey() jwt.Keyfunc {
