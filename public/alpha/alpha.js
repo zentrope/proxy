@@ -1,12 +1,16 @@
 //
 //
 
+const preact = window.preact
+const moment = window.moment
+const prettyCron = window.prettyCron
+
 //-----------------------------------------------------------------------------
 // Fetching
 //-----------------------------------------------------------------------------
 
 const LOC = window.location
-const API =  LOC.protocol + "//" + LOC.host + window.env.endpoint;
+const API =  LOC.protocol + "//" + LOC.host + window.env.endpoint
 
 const getContext = () =>
   window.location.pathname.replace(/[/]/g, "")
@@ -23,10 +27,10 @@ const checkStatus = (response) => {
 
 const getData = (callback) => {
   fetch(API + "/scan", {
-    method: 'GET',
-    credentials: 'include',
+    method: "GET",
+    credentials: "include",
     headers: new Headers({
-      "Authorization": 'Bearer ' + localStorage.getItem("authToken")
+      "Authorization": "Bearer " + localStorage.getItem("authToken")
     })})
     .then(res => checkStatus(res))
     .then(res => res.json())
@@ -37,6 +41,11 @@ const getData = (callback) => {
 //-----------------------------------------------------------------------------
 // HTML tag functions
 //-----------------------------------------------------------------------------
+
+const h = preact.h
+const Component = preact.Component
+
+var Section, Button, Div, H1, Table, Thead, Tbody, Tr, Td, Th
 
 (function genHTML() {
   // e.g., Section({class: "Foo"}, Div({}, H1({}, "Hello")))
@@ -57,16 +66,16 @@ const getData = (callback) => {
   ]
 
   elements.map(e => this[e] = partial(preact.h, e.toLowerCase()))
-})();
+})()
 
 //-----------------------------------------------------------------------------
 // Rendering
 //-----------------------------------------------------------------------------
 
-let __SymCounter = 1;
+let __SymCounter = 1
 
 const genSym = () =>
-  "G_" + __SymCounter++;
+  "G_" + __SymCounter++
 
 const orStar = (col) =>
   col === "" ? "*" : col
@@ -95,26 +104,23 @@ const renderDate = (date) => {
   return moment(date).format("DD MMM YY - hh:mm A")
 }
 
-const h = preact.h
-const Component = preact.Component
-
 
 class Lister extends Component {
   render({scans}) {
     return Div({class: "TableContainer"},
-             Table({},
-               Thead({},
-                 Tr({},
-                   Th({}, "matrix"),
-                   Th({}, "schedule"),
-                   Th({}, "start"),
-                   Th({}, "stop") )),
-               Tbody({},
-                 scans.map(s => Tr({key: genSym()},
-                                  Td({}, s.isolinear_matrix),
-                                  Td({}, renderSchedule(s.schedule)),
-                                  Td({}, renderDate(s.start)),
-                                  Td({}, renderDate(s.stop)) )))))
+      Table({},
+        Thead({},
+          Tr({},
+            Th({}, "matrix"),
+            Th({}, "schedule"),
+            Th({}, "start"),
+            Th({}, "stop") )),
+        Tbody({},
+          scans.map(s => Tr({key: genSym()},
+            Td({}, s.isolinear_matrix),
+            Td({}, renderSchedule(s.schedule)),
+            Td({}, renderDate(s.start)),
+            Td({}, renderDate(s.stop)) )))))
   }
 }
 
@@ -129,19 +135,18 @@ class UI extends Component {
     getData(data => this.setState({scans: data}))
   }
 
-  render() {
-    const {scans} = this.state
+  render(_, {scans}) {
     return Section({},
-             Button({onClick: () => window.location.href = '/'}, "Home"),
-             Div({class: 'WorkArea'},
-               H1({}, 'Isolinear Matrix Scans'),
-               h(Lister, {scans: scans}, null)))
+      Button({onClick: () => window.location.href = "/"}, "Home"),
+      Div({class: "WorkArea"},
+        H1({}, "Isolinear Matrix Scans"),
+        h(Lister, {scans: scans}, null)))
   }
 }
 
 const render = () => {
   const node = document.body
-  const root = node.querySelector('div#root')
+  const root = node.querySelector("div#root")
   preact.render(h(UI), node, root)
 }
 

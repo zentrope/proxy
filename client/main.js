@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-//-----------------------------------------------------------------------------
-
 class PushNotifier {
 
   constructor(handlerMap) {
@@ -31,7 +28,7 @@ class PushNotifier {
 
   start() {
     console.log("Starting websocket.")
-    this.ws = new WebSocket("ws://" + window.location.host + "/ws");
+    this.ws = new WebSocket("ws://" + window.location.host + "/ws")
 
     this.ws.onmessage = (evt) => {
       let msg = JSON.parse(evt.data)
@@ -65,7 +62,7 @@ class PushNotifier {
       this.start()
     }
     catch (err) {
-      log.error(err)
+      console.error(err)
     }
   }
 
@@ -73,7 +70,7 @@ class PushNotifier {
     if (this.ws.readyState === 3) {
       this.reconnect()
     } else if (this.ws.readyState === 1) {
-      this.ws.send(`{"type": "ping"}`)
+      this.ws.send('{"type": "ping"}')
     }
     this.timeoutId = setTimeout(this.pinger, this.interval)
   }
@@ -118,12 +115,12 @@ class Client {
 
   __authorize(request) {
     request.headers = { "Authorization": "Bearer " + this.authToken }
-    request.credentials = 'include'
+    request.credentials = "include"
     return request
   }
 
   login(user, pass, success, failure) {
-    let query = { method: 'POST', body: JSON.stringify({"email": user, "password": pass})}
+    let query = { method: "POST", body: JSON.stringify({"email": user, "password": pass})}
     fetch(this.url + "/auth/", query)
       .then(res => this.checkStatus(res))
       .then(res => res.json())
@@ -132,7 +129,7 @@ class Client {
   }
 
   validate(token, success, failure) {
-    let query = { method: 'POST', body: JSON.stringify({"token": token})}
+    let query = { method: "POST", body: JSON.stringify({"token": token})}
     fetch(this.url + "/auth", query)
       .then(res => this.checkStatus(res))
       .then(res => res.json())
@@ -142,23 +139,23 @@ class Client {
 
   sendCommand(command, success, failure) {
     let query = this.__authorize({
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(command)
     })
 
-    fetch(this.url + '/command', query)
-                    .then(res => this.checkStatus(res))
-                    .then(res =>  { if (success) success('ok') })
-                    .catch(err => { if (failure) failure(err) })
+    fetch(this.url + "/command", query)
+      .then(res => this.checkStatus(res))
+      .then(() =>  { if (success) success("ok") })
+      .catch(err => { if (failure) failure(err) })
   }
 
   fetchApplications(callback) {
-    let query = this.__authorize({method: 'GET'})
+    let query = this.__authorize({method: "GET"})
     fetch(this.url + "/query", query)
-                    .then(res => this.checkStatus(res))
-                    .then(res => res.json())
-                    .then(data => callback(data))
-                    .catch(err => this.errorDelegate(err))
+      .then(res => this.checkStatus(res))
+      .then(res => res.json())
+      .then(data => callback(data))
+      .catch(err => this.errorDelegate(err))
   }
 
   startNotifier(handlerMap) {
@@ -181,12 +178,14 @@ class Client {
 
 //-----------------------------------------------------------------------------
 
+const preact = window.preact
 const e = preact.createElement
 const component = preact.Component
 
-const _ = (function () {
+// Pre-declare these to assuage eslint.
+var Section, Button, Div, H1, Table, Thead, Tbody, Tr, Td, Th, P, Input
 
-  // e.g., Section({class: "Foo"}, Div({}, H1({}, "Hello")))
+const getHtmlTagFunctions = () => {
 
   function partial(fn) {
     // http://benalman.com/news/2012/09/partial-application-in-javascript/
@@ -200,11 +199,13 @@ const _ = (function () {
 
   const elements = [
     "Section", "Button", "Div", "H1", "Table",
-    "Thead", "Tbody", "Tr", "Td", "Th", "P", "Input", "Img"
+    "Thead", "Tbody", "Tr", "Td", "Th", "P", "Input"
   ]
 
   elements.map(name => this[name] = partial(preact.h, name.toLowerCase()))
-})()
+}
+
+getHtmlTagFunctions()
 
 const renderUser = (token) => {
   try {
@@ -213,7 +214,7 @@ const renderUser = (token) => {
     let user = JSON.parse(window.atob(userInfo))
     return user.email
   } catch (err) {
-   return "unknown user"
+    return "unknown user"
   }
 }
 
@@ -248,7 +249,7 @@ class LoginPhase extends component {
 
     const woot = (result) => login(result.token)
 
-    const fail = (err) => {
+    const fail = () => {
       this.setState({error: "Unable to sign in."})
       document.getElementById("user").focus()
     }
@@ -264,17 +265,16 @@ class LoginPhase extends component {
 
   handleKeyDown(e) {
     switch (e.keyCode) {
-      case 13:
-        if (this.isSubmittable()) {
-          this.handleSubmit()
-        }
-        break;
-      case 27:
-        this.setState({user: "", pass: ""})
-        document.getElementById("user").focus()
-        break;
-      default:
-        ;
+    case 13:
+      if (this.isSubmittable()) {
+        this.handleSubmit()
+      }
+      break
+    case 27:
+      this.setState({user: "", pass: ""})
+      document.getElementById("user").focus()
+      break
+    default:
     }
   }
 
@@ -288,8 +288,7 @@ class LoginPhase extends component {
     return (user.length > 0) && (pass.length > 0)
   }
 
-  render() {
-    var { user, pass, error } = this.state
+  render(_, { user, pass, error }) {
 
     const submit = this.isSubmittable() ? (
       Button({onClick: this.handleSubmit}, "Sign in")
@@ -306,23 +305,23 @@ class LoginPhase extends component {
           Div({class: "Widgets"},
             Div({class: "Widget"},
               Input({id: "user",
-                     type: "text",
-                     name: "user",
-                     value: user,
-                     autoComplete: "off",
-                     autoFocus: true,
-                     placeholder: "User ID",
-                     onKeyDown: this.handleKeyDown,
-                     onChange: this.handleChange})),
+                type: "text",
+                name: "user",
+                value: user,
+                autoComplete: "off",
+                autoFocus: true,
+                placeholder: "User ID",
+                onKeyDown: this.handleKeyDown,
+                onChange: this.handleChange})),
             Div({class: "Widget Pass"},
               Input({type: "password",
-                     name: "pass",
-                     value: pass,
-                     autoComplete: "off",
-                     autoFocus: false,
-                     placeholder: "Password",
-                     onKeyDown: this.handleKeyDown,
-                     onChange: this.handleChange}))))))
+                name: "pass",
+                value: pass,
+                autoComplete: "off",
+                autoFocus: false,
+                placeholder: "Password",
+                onKeyDown: this.handleKeyDown,
+                onChange: this.handleChange}))))))
   }
 }
 
@@ -338,9 +337,7 @@ class WorkArea extends component {
 
 class TitleBar extends component {
 
-  render() {
-    const { name } = this.props
-
+  render({ name }) {
     return (
       Section({class: "TitleBar"},
         Div({class: "Name"}, name))
@@ -351,8 +348,7 @@ class TitleBar extends component {
 
 class AppIcon extends component {
 
-  render() {
-    const { icon } = this.props
+  render({icon}) {
 
     return (
       Div({class: "AppIcon"},
@@ -362,9 +358,7 @@ class AppIcon extends component {
 
 class Application extends component {
 
-  render() {
-    const { application, onLaunch } = this.props
-
+  render({ application, onLaunch }) {
     return (
       Div({class: "Application"},
         Div({onClick: () => onLaunch(application.context)},
@@ -376,33 +370,29 @@ class Application extends component {
 
 class LaunchPad extends component {
 
-  render() {
-    const { apps, onLaunch } = this.props
-
+  render({ apps, onLaunch }) {
     return (
       e(WorkArea, {},
         Section({class: "LaunchPad"},
           apps.map(a => e(Application, {key: a.context,
-                                        application: a,
-                                        onLaunch: onLaunch})))))
+            application: a,
+            onLaunch: onLaunch})))))
   }
 }
 
 class Appstore extends component {
-  render() {
-    const { apps, onClick } = this.props
-
+  render({ apps, onClick }) {
     let remover = (a) =>
       () => {
         if (window.confirm("Remove '" + a.name + "' app from launchpad?")) {
-          onClick({cmd: 'uninstall', id: a.xrn})
+          onClick({cmd: "uninstall", id: a.xrn})
         }
       }
 
     let installer = (a) =>
       () => {
         if (window.confirm("Install '" + a.name + "' app?")) {
-          onClick({cmd: 'install', id: a.xrn})
+          onClick({cmd: "install", id: a.xrn})
         }
       }
 
@@ -410,7 +400,7 @@ class Appstore extends component {
       e(WorkArea, {},
         H1({}, "App Store"),
         P({}, "This is an admin function."),
-        Div({class: 'Tabular'},
+        Div({class: "Tabular"},
           Table({},
             Thead({},
               Tr({},
@@ -418,7 +408,7 @@ class Appstore extends component {
                 Th({width: "10%"}, "Version"),
                 Th({width: "10%"}, "Date"),
                 Th({}, "Description"),
-                Th({width: "10%", class: 'Center'}, "Option"))),
+                Th({width: "10%", class: "Center"}, "Option"))),
             Tbody({},
               apps.map(a =>
                 Tr({key: a.xrn},
@@ -426,7 +416,7 @@ class Appstore extends component {
                   Td({}, a.version),
                   Td({}, a.date),
                   Td({}, a.description),
-                  Td({class: 'Center'},
+                  Td({class: "Center"},
                     a.is_installed ? (
                       Button({onClick: remover(a)}, "Remove")
                     ) : (
@@ -441,9 +431,9 @@ class Appstore extends component {
 // via an external style sheet. Eh. Wanted to see if it worked.
 const loadSvg = (file, callback) => {
   let req = {
-    method: 'GET',
+    method: "GET",
     headers: {"Authorization": "Bearer " + localStorage.getItem("authToken")},
-    credentials: 'include'
+    credentials: "include"
   }
 
   fetch(file, req)
@@ -471,9 +461,7 @@ class Icon extends component {
     loadSvg(icons[this.props.code], svg => this.setState({icon: svg}))
   }
 
-  render() {
-    const { code } = this.props
-    const { icon } = this.state
+  render(_ , { icon }) {
 
     return (
       Div({dangerouslySetInnerHTML: {__html: icon}})
@@ -482,9 +470,7 @@ class Icon extends component {
 }
 
 class MenuItem extends component {
-  render() {
-    const { name, event, onClick, selected } = this.props
-
+  render({ name, event, onClick, selected }) {
     const doit = (e) =>
       onClick(e.target.getAttribute("name"))
 
@@ -500,8 +486,7 @@ class MenuItem extends component {
 
 class MenuBar extends component {
 
-  render() {
-    const { onClick, selected, menus } = this.props;
+  render({ onClick, selected, menus }) {
 
     let onItemClick = (event) => {
       onClick(event)
@@ -531,12 +516,12 @@ class MainPhase extends component {
       {name: "Sign out", event: "sign-out"}
     ]
 
-    this.state = {mode: 'launch-pad'}
+    this.state = {mode: "launch-pad"}
     this.handleMenu = this.handleMenu.bind(this)
   }
 
   handleMenu(event) {
-    if (event === 'sign-out') {
+    if (event === "sign-out") {
       if (window.confirm("Log out of the application?")) {
         this.props.onLogout()
       }
@@ -545,11 +530,9 @@ class MainPhase extends component {
     this.setState({mode: event})
   }
 
-  render() {
-    const { mode } = this.state
-    const { onLogout, onCommand, onLaunch, apps } = this.props
+  render({onCommand, onLaunch, apps} , {mode}) {
 
-    let view = mode === 'launch-pad' ?
+    let view = mode === "launch-pad" ?
       e(LaunchPad, {apps: apps.applications, onLaunch: onLaunch}) :
       e(Appstore, {apps: apps.app_store, onClick: onCommand})
 
@@ -558,7 +541,7 @@ class MainPhase extends component {
         e(TitleBar, {name: "Launch Pad"}),
         e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
         view,
-        Section({class: 'Footer'})
+        Section({class: "Footer"})
       ))
   }
 }
@@ -582,7 +565,7 @@ class App extends component {
     }
 
     let loc = window.location
-    let url = loc.protocol + "//" + loc.host;
+    let url = loc.protocol + "//" + loc.host
 
     this.client = new Client(url)
 
@@ -606,10 +589,10 @@ class App extends component {
     localStorage.setItem("authToken", token)
     this.client.setAuthToken(token)
     this.client.startNotifier({
-      'refresh' : () => this.doFetch(),
-      'ping': () => { /* do nothing */ }
+      "refresh" : () => this.doFetch(),
+      "ping": () => { /* do nothing */ }
     })
-    document.cookie = "authToken=" + token + "; max-age=259200; path=/;";
+    document.cookie = "authToken=" + token + "; max-age=259200; path=/;"
     this.doFetch()
   }
 
@@ -624,7 +607,6 @@ class App extends component {
 
   onLaunch(context) {
     this.client.stopNotifier()
-    let loc = window.location
     window.location.href = "/" + context
   }
 
@@ -636,7 +618,7 @@ class App extends component {
     let cs = JSON.stringify(command)
 
     let success = () => {
-      console.log('cmd.ok')
+      console.log("cmd.ok")
     }
 
     let failure = (err) => {
@@ -651,7 +633,7 @@ class App extends component {
     let token = localStorage.getItem("authToken")
 
     let woot = (res) => this.onLogin(res.token)
-    let fail = (err) => this.setState({loggedIn: LOGGED_OUT})
+    let fail = () => this.setState({loggedIn: LOGGED_OUT})
 
     if (token) {
       this.client.validate(token, woot, fail)
@@ -660,30 +642,29 @@ class App extends component {
     fail()
   }
 
-  render() {
-    const { loggedIn, apps } = this.state
+  render(_, { loggedIn, apps }) {
 
     switch (loggedIn) {
 
-      case LOADING:
-        return (e(LoadingPhase))
+    case LOADING:
+      return (e(LoadingPhase))
 
-      case LOGGED_OUT:
-        return (e(LoginPhase, {login: this.onLogin, client: this.client}))
+    case LOGGED_OUT:
+      return (e(LoginPhase, {login: this.onLogin, client: this.client}))
 
-      case LOGGED_IN:
-        return (e(MainPhase, {onLogout: this.onLogout, onCommand: this.onCommand,
-                              onLaunch: this.onLaunch, apps: apps}))
+    case LOGGED_IN:
+      return (e(MainPhase, {onLogout: this.onLogout, onCommand: this.onCommand,
+        onLaunch: this.onLaunch, apps: apps}))
 
-      default:
-        return (e(LoadingPhase))
+    default:
+      return (e(LoadingPhase))
     }
   }
 }
 
 const render = () => {
   const node = document.body
-  const element = node.querySelector('div#root')
+  const element = node.querySelector("div#root")
   preact.render(e(App), node, element)
 }
 
