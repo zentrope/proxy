@@ -220,11 +220,10 @@ const renderUser = (token) => {
 //-----------------------------------------------------------------------------
 
 class LoadingPhase extends component {
-
   render() {
     return (
       Div({class: "Loading"},
-          H1({}, "Loading...")))
+        H1({}, "Loading...")))
   }
 }
 
@@ -368,10 +367,10 @@ class Application extends component {
 
     return (
       Div({class: "Application"},
-          Div({onClick: () => onLaunch(application.context)},
-              e(AppIcon, {icon: application.icon}),
-              Div({class: "Title"}, application.name),
-              Div({class: "Context"}, application.version))))
+        Div({onClick: () => onLaunch(application.context)},
+          e(AppIcon, {icon: application.icon}),
+          Div({class: "Title"}, application.name),
+          Div({class: "Context"}, application.version))))
   }
 }
 
@@ -383,9 +382,9 @@ class LaunchPad extends component {
     return (
       e(WorkArea, {},
         Section({class: "LaunchPad"},
-                apps.map(a => e(Application, {key: a.context,
-                                              application: a,
-                                              onLaunch: onLaunch})))))
+          apps.map(a => e(Application, {key: a.context,
+                                        application: a,
+                                        onLaunch: onLaunch})))))
   }
 }
 
@@ -412,27 +411,28 @@ class Appstore extends component {
         H1({}, "App Store"),
         P({}, "This is an admin function."),
         Div({class: 'Tabular'},
-            Table({},
-                  Thead({},
-                        Tr({},
-                           Th({width: "15%"}, "Name"),
-                           Th({width: "10%"}, "Version"),
-                           Th({width: "10%"}, "Date"),
-                           Th({}, "Description"),
-                           Th({width: "10%", class: 'Center'}, "Option"))),
-                  Tbody({},
-                        apps.map(a =>
-                          Tr({key: a.xrn},
-                             Td({}, a.name),
-                             Td({}, a.version),
-                             Td({}, a.date),
-                             Td({}, a.description),
-                             Td({class: 'Center'},
-                                a.is_installed ? (
-                                  Button({onClick: remover(a)}, "Remove")
-                                ) : (
-                                  Button({onClick: installer(a)}, "Install"))
-                             )))))))
+          Table({},
+            Thead({},
+              Tr({},
+                Th({width: "15%"}, "Name"),
+                Th({width: "10%"}, "Version"),
+                Th({width: "10%"}, "Date"),
+                Th({}, "Description"),
+                Th({width: "10%", class: 'Center'}, "Option"))),
+            Tbody({},
+              apps.map(a =>
+                Tr({key: a.xrn},
+                  Td({}, a.name),
+                  Td({}, a.version),
+                  Td({}, a.date),
+                  Td({}, a.description),
+                  Td({class: 'Center'},
+                    a.is_installed ? (
+                      Button({onClick: remover(a)}, "Remove")
+                    ) : (
+                      Button({onClick: installer(a)}, "Install")
+                    )
+                  )))))))
     )
   }
 }
@@ -492,8 +492,8 @@ class MenuItem extends component {
 
     return (
       Div({class: className, name: event, onClick: doit},
-          Div({class: "Icon"}, e(Icon, {code: event})),
-          Div({class: "Name"}, name))
+        Div({class: "Icon"}, e(Icon, {code: event})),
+        Div({class: "Name"}, name))
     )
   }
 }
@@ -509,13 +509,13 @@ class MenuBar extends component {
 
     return (
       Section({class: "MenuBar"},
-              menus.map(m => e(MenuItem, {
-                key: m.name,
-                name: m.name,
-                event: m.event,
-                onClick: onItemClick,
-                selected: selected
-              })))
+        menus.map(m => e(MenuItem, {
+          key: m.name,
+          name: m.name,
+          event: m.event,
+          onClick: onItemClick,
+          selected: selected
+        })))
     )
   }
 }
@@ -550,15 +550,15 @@ class MainPhase extends component {
     const { onLogout, onCommand, onLaunch, apps } = this.props
 
     let view = mode === 'launch-pad' ?
-               e(LaunchPad, {apps: apps.applications, onLaunch: onLaunch}) :
-               e(Appstore, {apps: apps.app_store, onClick: onCommand})
+      e(LaunchPad, {apps: apps.applications, onLaunch: onLaunch}) :
+      e(Appstore, {apps: apps.app_store, onClick: onCommand})
 
     return (
       Section({class: "ApplicationShell"},
-              e(TitleBar, {name: "Launch Pad"}),
-              e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
-              view,
-              Section({class: 'Footer'})
+        e(TitleBar, {name: "Launch Pad"}),
+        e(MenuBar, {menus: this.menus, onClick: this.handleMenu, selected: mode}),
+        view,
+        Section({class: 'Footer'})
       ))
   }
 }
