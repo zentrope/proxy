@@ -3,10 +3,23 @@
   <head>
     <meta charset="utf-8">
     <title>Holo Deck Reservations</title>
+    <script type="text/javascript">
+      const goHome = () => window.location.href='/'
+      const getNode = () => document.body.querySelector("p#greeting")
+      const getMsg = () => "Hello <b>" + getEmail() + "</b>, choose your option:"
+      const sayHello = () => getNode().innerHTML = getMsg()
+      const getEmail = () => {
+        let token = localStorage.getItem("authToken")
+        let info = window.atob(token.split(".")[1])
+        let user = JSON.parse(info)
+        return user.email
+      }
+    </script>
   </head>
-  <body>
-    <button onClick="window.location.href='/'">Home</button>
+  <body onload=sayHello()>
+    <button onClick=goHome()>Home</button>
     <h1>Holo Deck</h1>
+    <p id="greeting"></p>
     <ul>
       <li>Make a reservation.</li>
       <li>Browse programs.</li>

@@ -206,6 +206,17 @@ const _ = (function () {
   elements.map(name => this[name] = partial(preact.h, name.toLowerCase()))
 })()
 
+const renderUser = (token) => {
+  try {
+    let parts = token.split(".")
+    let userInfo = parts[1]
+    let user = JSON.parse(window.atob(userInfo))
+    return user.email
+  } catch (err) {
+   return "unknown user"
+  }
+}
+
 //-----------------------------------------------------------------------------
 
 class LoadingPhase extends component {
@@ -590,6 +601,7 @@ class App extends component {
   }
 
   onLogin(token) {
+    console.log("Hello '" + renderUser(token) + "'.")
     this.setState({loggedIn: LOGGED_IN})
     localStorage.setItem("authToken", token)
     this.client.setAuthToken(token)

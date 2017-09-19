@@ -3,11 +3,33 @@
   <head>
     <meta charset="utf-8">
     <title>Ten Forward</title>
+    <script type="text/javascript">
+      function goHome() {
+        window.location.href='/'
+      }
+      function sayHello() {
+        let token = localStorage.getItem("authToken")
+        let user
+        try {
+          let parts = token.split(".")
+          let userInfo = parts[1]
+          user = JSON.parse(window.atob(userInfo))
+          console.log("user data from token", user)
+        } catch (err) {
+         console.log(err)
+        }
+        let head = document.body
+        console.log(head)
+        let node = head.querySelector("h1")
+        console.log(node)
+        node.innerHTML =  "Hello " + user.email + "!"
+      }
+    </script>
   </head>
-  <body>
-    <button onClick="window.location.href='/'">Home</button>
-
-    <h1>What can I do for you?</h1>
+  <body onload=sayHello()>
+    <button onClick=goHome()>Home</button>
+    <h1>HelloQ</h1>
+    <h2>What can I do for you?</h2>
     <input autofocus="true" type="text" width="100" placeholder="Question?" style="padding: 10px; font-size: 15pt; width: 90%;" />
   </body>
 </html>
