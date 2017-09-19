@@ -32,22 +32,24 @@ import (
 
 //-----------------------------------------------------------------------------
 
-type RouteMap map[string]string
+type routeMap map[string]string
 
-func NewProxyRoutes() RouteMap {
-	return RouteMap{}
+func newProxyRoutes() routeMap {
+	return routeMap{}
 }
 
-func (routes RouteMap) Set(context, url string) {
+func (routes routeMap) Set(context, url string) {
 	routes[context] = url
 }
 
 //-----------------------------------------------------------------------------
 
+// ProxyServer represents a running server and all its depenendent
+// resources.
 type ProxyServer struct {
 	Applications   *Applications
 	Database       *Database
-	Routes         RouteMap
+	Routes         routeMap
 	RootAppHandler http.Handler
 	StaticHandler  http.Handler
 	Checker        *time.Ticker
@@ -55,6 +57,8 @@ type ProxyServer struct {
 	clienthub      *ClientHub
 }
 
+// NewProxyServer represents a running server and all its depenendent
+// resources.
 func NewProxyServer(appDir, hostDir string, database *Database,
 	commander *CommandProcessor, clients *ClientHub) ProxyServer {
 	return ProxyServer{
@@ -63,20 +67,22 @@ func NewProxyServer(appDir, hostDir string, database *Database,
 		clienthub:      clients,
 		StaticHandler:  http.FileServer(http.Dir(appDir)),
 		RootAppHandler: http.FileServer(http.Dir(hostDir)),
-		Applications:   NewApplications(appDir),
-		Routes:         NewProxyRoutes(),
+		Applications:   newApplications(appDir),
+		Routes:         newProxyRoutes(),
 		Checker:        time.NewTicker(15 * time.Second),
 	}
 }
 
+// Start the proxy server.
 func (proxy ProxyServer) Start() {
 	log.Println("Starting proxy.")
 
 	server := http.Server{Addr: ":8080", Handler: proxy}
-	go proxy.TestConnectionsContinuously()
+	go proxy.testConnectionsContinuously()
 	go log.Fatal(server.ListenAndServe())
 }
 
+// Stop the proxy server
 func (proxy ProxyServer) Stop() {
 	log.Println("Stopping proxy.")
 	if proxy.Checker != nil {
@@ -84,11 +90,12 @@ func (proxy ProxyServer) Stop() {
 	}
 }
 
+// AddRoute adds a context router to a backend server.
 func (proxy ProxyServer) AddRoute(context, host string) {
 	proxy.Routes.Set(context, host)
 }
 
-func (proxy ProxyServer) TestConnections() {
+func (proxy ProxyServer) testConnections() {
 	test := func(context, addr string) {
 		conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 		if err != nil {
@@ -104,18 +111,18 @@ func (proxy ProxyServer) TestConnections() {
 	}
 }
 
-func (proxy ProxyServer) TestConnectionsContinuously() {
+func (proxy ProxyServer) testConnectionsContinuously() {
 	c := proxy.Checker.C
 	for _ = range c {
-		proxy.TestConnections()
+		proxy.testConnections()
 	}
 }
 
-func (proxy ProxyServer) IsApi(r *http.Request) bool {
+func (proxy ProxyServer) isAPI(r *http.Request) bool {
 	return proxy.Routes[getPathContext(r)] != ""
 }
 
-func (proxy ProxyServer) MakeContextDirector() func(req *http.Request) {
+func (proxy ProxyServer) makeContextDirector() func(req *http.Request) {
 	return func(req *http.Request) {
 		host := req.Host
 		path := req.URL.Path
@@ -129,7 +136,7 @@ func (proxy ProxyServer) MakeContextDirector() func(req *http.Request) {
 		//req.Header.Set("X-Proxy-Context", "http://"+req.Host+"/"+context)
 		req.Header.Set("X-Proxy-Context", context)
 
-		log.Printf("  `-> proxy: http://%v%v --> %v", host, path, req.URL.String())
+		log.Printf("`-> proxy: http://%v%v --> %v", host, path, req.URL.String())
 	}
 }
 
@@ -145,30 +152,45 @@ func (proxy ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch getPathContext(r) {
 
 	case "logout":
-		proxy.HandleLogout(w, r)
+		proxy.handleLogout(w, r)
 
 	case "auth":
-		proxy.HandleAuth(w, r)
+		proxy.handleAuth(w, r)
 
 	case "query":
-		proxy.HandleQuery(w, r)
+		proxy.handleQuery(w, r)
 
 	case "command":
-		proxy.HandleCommand(w, r)
+		proxy.handleCommand(w, r)
 
 	case "ws":
-		proxy.HandleWebSocket(w, r)
+		proxy.handleWebSocket(w, r)
+
+	case "static":
+		proxy.handleHomeApp(w, r)
 
 	case "":
-		proxy.HandleHomeApp(w, r)
+		proxy.handleHomeApp(w, r)
 
 	default:
-		if proxy.IsApi(r) {
-			proxy.HandleBackend(w, r)
+		if proxy.isAPI(r) {
+			proxy.handleBackend(w, r)
 		} else {
-			proxy.HandleInstalledApps(w, r)
+			proxy.handleInstalledApps(w, r)
 		}
 	}
+}
+
+//-----------------------------------------------------------------------------
+
+func (proxy ProxyServer) handleHomeApp(w http.ResponseWriter, r *http.Request) {
+	token, err := checkAuth(w, r)
+	if err != nil {
+		unsetCookie(w)
+	} else {
+		setAuth(w, token)
+	}
+	proxy.RootAppHandler.ServeHTTP(w, r)
 }
 
 //-----------------------------------------------------------------------------
@@ -180,7 +202,7 @@ var upgrader = websocket.Upgrader{
 
 var pingPacket = []byte(`{"type":"ping"}`)
 
-func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
@@ -196,10 +218,10 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 
 	defer conn.Close()
 
-	client := NewClient(token, conn)
-	proxy.clienthub.Add(client)
+	client := newClient(token, conn)
+	proxy.clienthub.add(client)
 
-	viewer, _ := DecodeAuthToken(token)
+	viewer, _ := decodeAuthToken(token)
 	log.Printf("- socket.open: [%v]", viewer.Email)
 
 	for {
@@ -229,20 +251,20 @@ func (proxy ProxyServer) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	proxy.clienthub.Delete(client)
+	proxy.clienthub.delete(client)
 	log.Printf("- socket.closed: [%v]", viewer.Email)
 }
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 	unsetCookie(w)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyServer) HandleBackend(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleBackend(w http.ResponseWriter, r *http.Request) {
 
 	_, err := checkAuth(w, r)
 	if err != nil {
@@ -251,7 +273,7 @@ func (proxy ProxyServer) HandleBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reverseProxy := &httputil.ReverseProxy{
-		Director: proxy.MakeContextDirector(),
+		Director: proxy.makeContextDirector(),
 		ModifyResponse: func(res *http.Response) error {
 			res.Header.Set("X-Proxy-Context", getPathContext(r))
 			return nil
@@ -263,7 +285,7 @@ func (proxy ProxyServer) HandleBackend(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyServer) HandleInstalledApps(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleInstalledApps(w http.ResponseWriter, r *http.Request) {
 	token, err := checkAuth(w, r)
 	if err != nil {
 		unsetCookie(w)
@@ -277,27 +299,12 @@ func (proxy ProxyServer) HandleInstalledApps(w http.ResponseWriter, r *http.Requ
 
 //-----------------------------------------------------------------------------
 
-func (proxy ProxyServer) HandleHomeApp(w http.ResponseWriter, r *http.Request) {
-
-	token, err := checkAuth(w, r)
-	proxy.RootAppHandler.ServeHTTP(w, r)
-	if err != nil {
-		unsetCookie(w)
-	} else {
-		setAuth(w, token)
-	}
-
-	return
-}
-
-//-----------------------------------------------------------------------------
-
-type QueryResults struct {
+type queryResults struct {
 	Applications []*InstalledApp `json:"applications"`
-	AppStore     []*AppStoreSku  `json:"app_store"`
+	AppStore     []*appStoreSku  `json:"app_store"`
 }
 
-func (proxy ProxyServer) HandleQuery(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
@@ -305,17 +312,17 @@ func (proxy ProxyServer) HandleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proxy.Applications.Reload()
+	proxy.Applications.reload()
 
-	installs := proxy.Applications.AppMap()
-	skus := proxy.Database.SKUs()
+	installs := proxy.Applications.appMap()
+	skus := proxy.Database.appSkus()
 
 	// Flag already installed SKUs.
 	for i, sku := range skus {
 		skus[i].IsInstalled = installs[sku.XRN] != nil
 	}
 
-	graph := &QueryResults{
+	graph := &queryResults{
 		Applications: proxy.Applications.InstalledApps,
 		AppStore:     skus,
 	}
@@ -337,12 +344,12 @@ func (proxy ProxyServer) HandleQuery(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
-type CommandRequest struct {
+type commandRequest struct {
 	Command string `json:"cmd"`
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 }
 
-func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleCommand(w http.ResponseWriter, r *http.Request) {
 
 	token, err := checkAuth(w, r)
 	if err != nil {
@@ -350,16 +357,16 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var command CommandRequest
+	var command commandRequest
 	if err := json.NewDecoder(r.Body).Decode(&command); err != nil {
 		writeError(w, http.StatusBadRequest, "Can't deserialize command request.")
 		return
 	}
 
 	log.Printf("- invoking command '%v'", command.Command)
-	proxy.commander.Invoke(token, command.Command, command.Id)
+	proxy.commander.invoke(token, command.Command, command.ID)
 
-	proxy.clienthub.SendAck(token, command.Command)
+	proxy.clienthub.sendAck(token, command.Command)
 
 	setAuth(w, token)
 	w.WriteHeader(200)
@@ -367,22 +374,22 @@ func (proxy ProxyServer) HandleCommand(w http.ResponseWriter, r *http.Request) {
 
 //-----------------------------------------------------------------------------
 
-type AuthRequest struct {
+type authRequest struct {
 	Email    string `json:"email,omitempty"`
 	Password string `json:"password,omitempty"`
 	Token    string `json:"token"`
 }
 
-func (proxy ProxyServer) HandleAuth(w http.ResponseWriter, r *http.Request) {
+func (proxy ProxyServer) handleAuth(w http.ResponseWriter, r *http.Request) {
 
-	var params AuthRequest
+	var params authRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		writeError(w, http.StatusBadRequest, "Can't deserialize auth request.")
 		return
 	}
 
-	writeParams := func(auth AuthRequest) {
+	writeParams := func(auth authRequest) {
 		bytes, err := json.Marshal(auth)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Unable to serialize auth response.")
@@ -396,7 +403,7 @@ func (proxy ProxyServer) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	// AUTH BY TOKEN
 
 	if params.Token != "" {
-		valid, err := IsValidAuthToken(params.Token)
+		valid, err := isValidAuthToken(params.Token)
 		if err != nil {
 			log.Printf("Auth validity check: %v", err)
 		}
@@ -406,25 +413,25 @@ func (proxy ProxyServer) HandleAuth(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		writeParams(AuthRequest{Token: params.Token})
+		writeParams(authRequest{Token: params.Token})
 		return
 	}
 
 	// AUTH BY USER/PASS
 
-	user, err := proxy.Database.FindUser(params.Email, params.Password)
+	user, err := proxy.Database.findUser(params.Email, params.Password)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	token, err := MakeAuthToken(user)
+	token, err := makeAuthToken(user)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Can't construct token.")
 		return
 	}
 
-	writeParams(AuthRequest{Token: token, Email: params.Email})
+	writeParams(authRequest{Token: token, Email: params.Email})
 }
 
 //-----------------------------------------------------------------------------
@@ -432,7 +439,6 @@ func (proxy ProxyServer) HandleAuth(w http.ResponseWriter, r *http.Request) {
 //-----------------------------------------------------------------------------
 
 func newCookie(token string) *http.Cookie {
-
 	threeDays := 259200
 	return &http.Cookie{
 		Path:     "/",
@@ -469,13 +475,13 @@ func checkAuth(w http.ResponseWriter, r *http.Request) (string, error) {
 		}
 	}
 
-	valid, err := IsValidAuthToken(authToken)
+	valid, err := isValidAuthToken(authToken)
 	if err != nil {
 		return "", err
 	}
 
 	if !valid {
-		return "", errors.New("Invalid authorization.")
+		return "", errors.New("invalid authorization")
 	}
 
 	return authToken, nil

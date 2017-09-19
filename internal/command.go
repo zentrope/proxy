@@ -26,60 +26,64 @@ import (
 	"path/filepath"
 )
 
-type CommandCode int
+type commandCode int
 
-type CommandResult struct {
-	code    CommandCode
+type commandResult struct {
+	code    commandCode
 	reason  string
-	command Command
+	command command
 }
 
-type Command interface {
-	invoke(ctx *CommandProcessor) CommandResult
+type command interface {
+	invoke(ctx *CommandProcessor) commandResult
 }
 
-type CommandFunc func()
+type commandFunc func()
 
+// CommandProcessor contains the state for running serialized commands.
 type CommandProcessor struct {
 	appDir    string
 	database  *Database
 	clienthub *ClientHub
-	queue     chan CommandFunc
+	queue     chan commandFunc
 }
 
 const (
-	CommandOk    = CommandCode(iota)
-	CommandError = iota
+	commandOk    = commandCode(iota)
+	commandError = iota
 )
 
+// NewCommandProcessor returns a processor for running serialized, side-effect commmands
 func NewCommandProcessor(appDir string, database *Database, clients *ClientHub) *CommandProcessor {
 	return &CommandProcessor{
 		appDir:    appDir,
 		database:  database,
 		clienthub: clients,
-		queue:     make(chan CommandFunc),
+		queue:     make(chan commandFunc),
 	}
 }
 
+// Start the command processor.
 func (cp *CommandProcessor) Start() {
 	log.Printf("Starting command processor.")
 	go cp.processJobs()
 }
 
+// Stop the command processor.
 func (cp *CommandProcessor) Stop() {
 	log.Printf("Stopping command processor.")
 	close(cp.queue)
 }
 
-func (cp *CommandProcessor) Invoke(clientId, command, xrn string) {
-	var cmd Command
-	switch command {
+func (cp *CommandProcessor) invoke(clientID, commandTag, xrn string) {
+	var cmd command
+	switch commandTag {
 	case "install":
 		cmd = installCmd{xrn, cp.appDir}
 	case "uninstall":
 		cmd = uninstallCmd{xrn, cp.appDir}
 	default:
-		cmd = unknownCmd{command}
+		cmd = unknownCmd{commandTag}
 	}
 
 	cp.queue <- func() {
@@ -112,9 +116,9 @@ type unknownCmd struct {
 	name string
 }
 
-func (cmd installCmd) invoke(ctx *CommandProcessor) CommandResult {
+func (cmd installCmd) invoke(ctx *CommandProcessor) commandResult {
 
-	sku, err := ctx.database.FindSKU(cmd.xrn)
+	sku, err := ctx.database.findSKU(cmd.xrn)
 	if err != nil {
 		return badResult(cmd, err.Error())
 	}
@@ -134,6 +138,9 @@ func (cmd installCmd) invoke(ctx *CommandProcessor) CommandResult {
 	defer out.Close()
 
 	resp, err := http.Get(url)
+	if err != nil {
+		return badResult(cmd, err.Error())
+	}
 	defer resp.Body.Close()
 
 	n, err := io.Copy(out, resp.Body)
@@ -151,13 +158,13 @@ func (cmd installCmd) invoke(ctx *CommandProcessor) CommandResult {
 		return badResult(cmd, err.Error())
 	}
 
-	ctx.clienthub.NotifyRefresh()
+	ctx.clienthub.notifyRefresh()
 	return goodResult(cmd)
 }
 
-func (cmd uninstallCmd) invoke(ctx *CommandProcessor) CommandResult {
+func (cmd uninstallCmd) invoke(ctx *CommandProcessor) commandResult {
 
-	sku, err := ctx.database.FindSKU(cmd.xrn)
+	sku, err := ctx.database.findSKU(cmd.xrn)
 	if err != nil {
 		return badResult(cmd, err.Error())
 	}
@@ -173,22 +180,22 @@ func (cmd uninstallCmd) invoke(ctx *CommandProcessor) CommandResult {
 		return badResult(cmd, err.Error())
 	}
 
-	ctx.clienthub.NotifyRefresh()
+	ctx.clienthub.notifyRefresh()
 	return goodResult(cmd)
 }
 
-func (cmd unknownCmd) invoke(ctx *CommandProcessor) CommandResult {
+func (cmd unknownCmd) invoke(ctx *CommandProcessor) commandResult {
 	return badResult(cmd, fmt.Sprintf("Unknown command: '%v'.", cmd.name))
 }
 
 //-----------------------------------------------------------------------------
 
-func goodResult(cmd Command) CommandResult {
-	return CommandResult{code: CommandOk, reason: "Ok", command: cmd}
+func goodResult(cmd command) commandResult {
+	return commandResult{code: commandOk, reason: "Ok", command: cmd}
 }
 
-func badResult(cmd Command, reason string) CommandResult {
-	return CommandResult{code: CommandError, reason: reason, command: cmd}
+func badResult(cmd command, reason string) commandResult {
+	return commandResult{code: commandError, reason: reason, command: cmd}
 }
 
 func unzip(archive, target string) error {
@@ -228,5 +235,3 @@ func unzip(archive, target string) error {
 
 	return nil
 }
-
-//-----------------------------------------------------------------------------

@@ -24,64 +24,64 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//-----------------------------------------------------------------------------
-
-type Client struct {
+type client struct {
 	token string
 	conn  *websocket.Conn
 }
 
-func NewClient(token string, conn *websocket.Conn) *Client {
-	return &Client{
+func newClient(token string, conn *websocket.Conn) *client {
+	return &client{
 		token: token,
 		conn:  conn,
 	}
 }
 
-func (client *Client) Send(msg interface{}) error {
+func (client *client) send(msg interface{}) error {
 	return websocket.WriteJSON(client.conn, msg)
 }
 
-func (client *Client) SendAck(command string) error {
+func (client *client) sendAck(command string) error {
 	type ackMsg struct {
 		Type    string `json:"type"`
 		Command string `json:"command"`
 	}
 	msg := ackMsg{"ack", command}
-	return client.Send(msg)
+	return client.send(msg)
 }
 
-//-----------------------------------------------------------------------------
-
+// ClientHub is a container for authenticated websocket connections.
 type ClientHub struct {
-	clients []*Client
+	clients []*client
 	mutex   sync.Mutex
 }
 
+// NewClientHub returns a new ClientHub container.
 func NewClientHub() *ClientHub {
 	return &ClientHub{
 		mutex: sync.Mutex{},
 	}
 }
 
+// Start the client hub.
 func (hub *ClientHub) Start() {
 	log.Println("Starting client hub.")
 }
 
+// Stop the client hub
 func (hub *ClientHub) Stop() {
 	log.Println("Stopping client hub.")
 }
 
-func (hub *ClientHub) SendAck(token, command string) error {
+func (hub *ClientHub) sendAck(token, command string) error {
 	for _, c := range hub.clients {
 		if c.token == token {
-			return c.SendAck(command)
+			return c.sendAck(command)
 		}
 	}
-	return fmt.Errorf("Unable to find client to ack.")
+	return fmt.Errorf("unable to find client to ack")
 }
 
-func (hub *ClientHub) Add(client *Client) *Client {
+func (hub *ClientHub) add(client *client) *client {
 	hub.mutex.Lock()
 	defer hub.mutex.Unlock()
 
@@ -90,12 +90,12 @@ func (hub *ClientHub) Add(client *Client) *Client {
 	return client
 }
 
-func (hub *ClientHub) Delete(client *Client) {
+func (hub *ClientHub) delete(c *client) {
 	hub.mutex.Lock()
 	defer hub.mutex.Unlock()
-	clients := make([]*Client, 0)
+	clients := make([]*client, 0)
 	for _, c := range hub.clients {
-		if c.conn != client.conn {
+		if c.conn != c.conn {
 			clients = append(clients, c)
 		}
 	}
@@ -109,11 +109,11 @@ type simpleNotification struct {
 
 var commandRefresh = simpleNotification{"refresh"}
 
-func (hub *ClientHub) NotifyRefresh() {
+func (hub *ClientHub) notifyRefresh() {
 	hub.mutex.Lock()
 	defer hub.mutex.Unlock()
 	for _, client := range hub.clients {
-		if err := client.Send(commandRefresh); err != nil {
+		if err := client.send(commandRefresh); err != nil {
 			log.Printf("ERROR: Unable to write to socket.")
 		}
 	}

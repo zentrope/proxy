@@ -27,6 +27,8 @@ import (
 
 //-----------------------------------------------------------------------------
 
+// An InstalledApp represents an application installed locally (either stock or
+// from the store).
 type InstalledApp struct {
 	XRN         string `json:"xrn"`
 	Name        string `json:"name"`
@@ -38,20 +40,20 @@ type InstalledApp struct {
 	Context     string `json:"context"`
 }
 
+// Applications represents a collection of installed apps.
 type Applications struct {
 	InstalledApps []*InstalledApp `json:"applications"`
 	dir           string
 }
 
-func NewApplications(dir string) *Applications {
-
+func newApplications(dir string) *Applications {
 	return &Applications{
 		dir:           dir,
 		InstalledApps: nil,
 	}
 }
 
-func (a *Applications) AppMap() map[string]*InstalledApp {
+func (a *Applications) appMap() map[string]*InstalledApp {
 	result := make(map[string]*InstalledApp, 0)
 	for _, app := range a.InstalledApps {
 		result[app.XRN] = app
@@ -60,7 +62,7 @@ func (a *Applications) AppMap() map[string]*InstalledApp {
 	return result
 }
 
-func (a *Applications) Reload() error {
+func (a *Applications) reload() error {
 	apps, err := findApps(a.dir)
 	if err != nil {
 		return err
@@ -68,8 +70,6 @@ func (a *Applications) Reload() error {
 	a.InstalledApps = apps
 	return nil
 }
-
-//-----------------------------------------------------------------------------
 
 func trimSvg(svg string) string {
 	reg, err := regexp.Compile("[<][?].*[?][>]")

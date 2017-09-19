@@ -22,20 +22,21 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
-var SECRET = []byte("should be in config file")
+var signingSecret = []byte("should be in config file")
 
-const BAD_AUTH_MSG = "Not found."
+const badAuthMsg = "Authentication token not found."
+const badSignMsg = "Unexpected authentication signing method: `%v`."
 
+// Viewer represents the currently authenticated user.
 type Viewer struct {
-	Id    string `json:"uuid"`
+	ID    string `json:"uuid"`
 	Email string `json:"email"`
 	jwt.StandardClaims
 }
 
-func MakeAuthToken(user *User) (string, error) {
-
+func makeAuthToken(user *User) (string, error) {
 	claims := Viewer{
-		user.Id,
+		user.ID,
 		user.Email,
 		jwt.StandardClaims{
 			Issuer: "vaclav",
@@ -43,44 +44,38 @@ func MakeAuthToken(user *User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(SECRET)
+	tokenString, err := token.SignedString(signingSecret)
 	if err != nil {
 		return "", err
 	}
 	return tokenString, nil
 }
 
-func DecodeAuthToken(token string) (*Viewer, error) {
+func decodeAuthToken(token string) (*Viewer, error) {
 	result, err := jwtdecode(token)
 	return result.Claims.(*Viewer), err
 }
 
-func IsValidAuthToken(tokenString string) (bool, error) {
-
+func isValidAuthToken(tokenString string) (bool, error) {
 	token, err := jwtdecode(tokenString)
-
 	if err != nil {
-		//log.Printf(" [x] auth.error: %v", err)
-		return false, fmt.Errorf(BAD_AUTH_MSG)
+		return false, fmt.Errorf(badAuthMsg)
 	}
-
 	return token.Valid, nil
 }
 
 func jwtdecode(tokenString string) (*jwt.Token, error) {
 	if tokenString == "" {
-		//log.Printf(" [x] auth.error: Token not found.")
-		return nil, fmt.Errorf(BAD_AUTH_MSG)
+		return nil, fmt.Errorf(badAuthMsg)
 	}
-
 	return jwt.ParseWithClaims(tokenString, &Viewer{}, checkAlgKey())
 }
 
 func checkAlgKey() jwt.Keyfunc {
 	return func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf(" [x] auth.error: unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf(badSignMsg, token.Header["alg"])
 		}
-		return SECRET, nil
+		return signingSecret, nil
 	}
 }

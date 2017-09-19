@@ -24,34 +24,36 @@ import (
 	"time"
 )
 
+// AppStore manages the current state of app store synchronization.
 type AppStore struct {
 	storeURL string
 	clock    *time.Ticker
 	db       *Database
 }
 
-func NewAppStore(storeUrl string, db *Database) *AppStore {
+// NewAppStore is a service to fetch apps from the app store.
+func NewAppStore(storeURL string, db *Database) *AppStore {
 	return &AppStore{
-		storeURL: storeUrl,
+		storeURL: storeURL,
 		clock:    time.NewTicker(17 * time.Second),
 		db:       db,
 	}
 }
 
+// Start the app store monitor and caching service.
 func (store *AppStore) Start() {
 	log.Printf("Starting appstore fetcher [%v].", store.storeURL)
 	go store.fetch() // start off immediately
 	go store.fetchStoreDataContinuously()
 }
 
+// Stop the app store monitor and caching service.
 func (store *AppStore) Stop() {
 	log.Println("Stopping appstore fetcher.")
 	if store.clock != nil {
 		store.clock.Stop()
 	}
 }
-
-//-----------------------------------------------------------------------------
 
 func (store *AppStore) fetchStoreDataContinuously() {
 	c := store.clock.C
@@ -76,11 +78,11 @@ func (store *AppStore) fetch() error {
 		return err
 	}
 
-	var apps []*AppStoreSku
+	var apps []*appStoreSku
 	if err := json.Unmarshal(body, &apps); err != nil {
 		return err
 	}
 
-	store.db.SetSKUs(apps)
+	store.db.setSKUs(apps)
 	return nil
 }
