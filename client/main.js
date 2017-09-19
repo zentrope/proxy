@@ -452,9 +452,9 @@ class Icon extends component {
   componentDidMount() {
 
     const icons = {
-      "app-store": "appstore.svg",
-      "launch-pad": "launchpad.svg",
-      "sign-out": "sign-out.svg"
+      "app-store": "static/icon/appstore.svg",
+      "launch-pad": "static/icon/launchpad.svg",
+      "sign-out": "static/icon/sign-out.svg"
     }
 
     loadSvg(icons[this.props.code], svg => this.setState({icon: svg}))
