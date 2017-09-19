@@ -5,11 +5,11 @@
 // Fetching
 //-----------------------------------------------------------------------------
 
-const LOC = window.location
-const API =  LOC.protocol + "//" + LOC.host + window.env.endpoint;
+const $ = window.$
+const prettyCron = window.prettyCron
 
-const getContext = () =>
-  window.location.pathname.replace(/[/]/g, "")
+const LOC = window.location
+const API =  LOC.protocol + "//" + LOC.host + window.env.endpoint
 
 const checkStatus = (response) => {
   if (response.status >= 200 && response.status < 300) {
@@ -23,10 +23,10 @@ const checkStatus = (response) => {
 
 const getData = (callback) => {
   fetch(API + "/schedule", {
-    method: 'GET',
-    credentials: 'include',
+    method: "GET",
+    credentials: "include",
     headers: new Headers({
-      "Authorization": 'Bearer ' + localStorage.getItem("authToken")
+      "Authorization": "Bearer " + localStorage.getItem("authToken")
     })})
     .then(res => checkStatus(res))
     .then(res => res.json())
@@ -70,7 +70,8 @@ const renderSchedules = (schedules) => {
     `<tr>
       <td>` + s.name + `</td>
       <td>` + s.status + `</td>
-      <td>` + renderCron(s.schedule) + `</td></tr>`)
+      <td>` + renderCron(s.schedule) + `</td>
+    </tr>`)
 
   return head + rows.join("\n") + "</tbody></table>"
 }
@@ -80,7 +81,7 @@ const render = (schedules) => {
 
   $("#root").html(`
     <section class="Nav">
-      <button id='go-home'>Home</button>
+      <button id="go-home">Home</button>
     </section>
     <section class="WorkArea">
       <h1>`
@@ -100,7 +101,7 @@ const main = () => {
 
   $("#root").html(`
     <section class="Nav">
-      <button id='go-home'>Home</button>
+      <button id="go-home">Home</button>
     </section>
     <section class="WorkArea">
       <h1>` + TITLE + `</h1>
