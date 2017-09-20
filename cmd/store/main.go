@@ -310,11 +310,7 @@ func (system *system) prepare() error {
 		return err
 	}
 
-	if err := os.Mkdir(system.deployDir, 0755); err != nil {
-		return err
-	}
-
-	return nil
+	return os.Mkdir(system.deployDir, 0755)
 }
 
 func (system *system) start() {
