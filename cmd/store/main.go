@@ -107,8 +107,8 @@ func zipit(source, target string) error {
 
 //-----------------------------------------------------------------------------
 
-type System struct {
-	Skus      []*Sku
+type system struct {
+	skus      []*Sku
 	timestamp time.Time
 	clock     *time.Ticker
 	sourceDir string
@@ -132,7 +132,7 @@ type Sku struct {
 // returns a list of the imported metadata.js files for each
 // application/sku.
 
-func (system *System) LoadApps() error {
+func (system *system) loadApps() error {
 
 	sourceDir, err := filepath.Abs(system.sourceDir)
 	if err != nil {
@@ -166,11 +166,11 @@ func (system *System) LoadApps() error {
 	}
 
 	system.timestamp = time.Now()
-	system.Skus = skus
+	system.skus = skus
 	return nil
 }
 
-func (system *System) MonitorApps() {
+func (system *system) monitorApps() {
 
 	// Blunt force: if anything changes in the app source directory,
 	// repackage and re-deploy everything.
@@ -205,8 +205,8 @@ func (system *System) MonitorApps() {
 		if t.After(system.timestamp) {
 			log.Printf("Monitor: '%v' has been updated, and should be re-packaged.",
 				system.sourceDir)
-			system.LoadApps()
-			system.CreateDownloads()
+			system.loadApps()
+			system.createDownloads()
 		}
 
 		return nil
@@ -215,34 +215,31 @@ func (system *System) MonitorApps() {
 	c := system.clock.C
 	for _ = range c {
 		if err := pass(); err != nil {
-			log.Println("- ERROR: %v", err)
+			log.Printf("- ERROR: %v", err)
 		}
 	}
 }
 
-func (system *System) CreateDownload(sku *Sku) error {
+func (system *system) createDownload(sku *Sku) error {
 	dest := filepath.Join(system.deployDir, sku.XRN+".zip")
 	dest, err := filepath.Abs(dest)
 	if err != nil {
 		return err
 	}
 	log.Printf(" - Packaging %v.", sku.Name)
-	if err := zipit(sku.appdir, dest); err != nil {
-		return err
-	}
-	return nil
+	return zipit(sku.appdir, dest)
 }
 
-func (system *System) CreateDownloads() error {
-	for _, sku := range system.Skus {
-		if err := system.CreateDownload(sku); err != nil {
+func (system *system) createDownloads() error {
+	for _, sku := range system.skus {
+		if err := system.createDownload(sku); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (system *System) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (system *system) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("%v %v%v", r.Method, r.Host, r.URL.Path)
 
@@ -259,9 +256,9 @@ func (system *System) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case "catalog":
 
-		for i, sku := range system.Skus {
+		for i, sku := range system.skus {
 			path := "http://" + r.Host + "/download/" + sku.XRN + ".zip"
-			system.Skus[i].Download = path
+			system.skus[i].Download = path
 		}
 
 		w.Header().Set("content-type", "application/json")
@@ -285,13 +282,13 @@ func (system *System) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (system *System) String() string {
+func (system *system) String() string {
 	buf := new(bytes.Buffer)
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
-	if err := enc.Encode(system.Skus); err != nil {
+	if err := enc.Encode(system.skus); err != nil {
 		return fmt.Sprintf("<%v>", err)
 	}
 	return buf.String()
@@ -301,7 +298,7 @@ func (system *System) String() string {
 // (skus) and recreates them based on the contents of a source
 // directory.
 
-func (system *System) Prepare() error {
+func (system *system) prepare() error {
 
 	if _, err := os.Stat(system.sourceDir); os.IsNotExist(err) {
 		log.Fatalf("Can't find store source directory: %v", system.sourceDir)
@@ -319,24 +316,24 @@ func (system *System) Prepare() error {
 	return nil
 }
 
-func (system *System) Start() {
+func (system *system) start() {
 
 	log.Println("Starting system.")
 
-	if err := system.Prepare(); err != nil {
+	if err := system.prepare(); err != nil {
 		log.Fatalf("Unable to start: %v", err)
 	}
 
-	if err := system.LoadApps(); err != nil {
+	if err := system.loadApps(); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := system.CreateDownloads(); err != nil {
+	if err := system.createDownloads(); err != nil {
 		log.Fatal(err)
 	}
 
 	system.clock = time.NewTicker(11 * time.Second)
-	go system.MonitorApps()
+	go system.monitorApps()
 
 	server := http.Server{
 		Addr:    ":60001",
@@ -346,7 +343,7 @@ func (system *System) Start() {
 	log.Fatal(server.ListenAndServe())
 }
 
-func (system *System) Stop() {
+func (system *system) stop() {
 	log.Println("Stopping sequence.")
 	if system.clock != nil {
 		system.clock.Stop()
@@ -354,8 +351,8 @@ func (system *System) Stop() {
 
 }
 
-func NewSystem(source, target string) *System {
-	return &System{
+func newSystem(source, target string) *system {
+	return &system{
 		sourceDir: source,
 		deployDir: target,
 	}
@@ -364,12 +361,12 @@ func NewSystem(source, target string) *System {
 func main() {
 	log.Println("Welcome to Proxy App Store (port 60001).")
 
-	system := NewSystem("./source", "./deploy")
+	system := newSystem("./source", "./deploy")
 
-	go system.Start()
+	go system.start()
 
 	blockUntilShutdownThenDo(func() {
-		system.Stop()
+		system.stop()
 	})
 
 	log.Println("System halt.")
