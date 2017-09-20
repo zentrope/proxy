@@ -5,3 +5,5 @@ vendor/*
 /cmd/store/deploy
 /public/ten-forward
 /public/holo-deck
+/store
+/dep

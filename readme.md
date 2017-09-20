@@ -55,7 +55,40 @@ gets me (or you) further along in the process, and at worst,
 demystifies the ideas enough to figure out what not to do, or how to
 do it better.
 
-## Build and use (dev environment)
+## Build and use (docker environment)
+
+**When you don't have a Golang environment...**
+
+These instructions allow you to compile and run the applications without setting up a Golang development environment, or making sure you have the source code in the proper `$GOPATH` directory. _Note: These use Docker to build native software, not run them in containers._
+
+Check out the code from github anywhere you want:
+
+    $ git clone git@github.com:zentrope/proxy
+
+then `cd` to the source location:
+
+    $ cd proxy
+
+then build all binaries in the project:
+
+    $ make docker-build-macos
+
+this will produce three binaries: `proxy`, `backend`, and `store` at the top level. The build step should fail if you don't have Docker running on your system.
+
+Once you have the three binaries available, you'll need to open three terminals and run them as follows:
+
+    # terminal 1
+    make run-backend
+
+    # terminal 2
+    make run-store
+
+    # terminal 3
+    make run
+
+That's it! You can visit that app at [http://localhost:8080](http://localhost:8080).
+
+## Build and use (golang environment)
 
 This app an experiment so there's no way at present to configure
 different back end services or change ports without directly editing
