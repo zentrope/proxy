@@ -20,6 +20,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -108,14 +109,14 @@ func zipit(source, target string) error {
 //-----------------------------------------------------------------------------
 
 type system struct {
-	skus      []*Sku
+	skus      []*sku
 	timestamp time.Time
 	clock     *time.Ticker
 	sourceDir string
 	deployDir string
 }
 
-type Sku struct {
+type sku struct {
 	XRN         string `json:"xrn"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -141,7 +142,7 @@ func (system *system) loadApps() error {
 
 	sources, err := ioutil.ReadDir(sourceDir)
 
-	skus := make([]*Sku, 0)
+	skus := make([]*sku, 0)
 
 	for _, v := range sources {
 
@@ -154,7 +155,7 @@ func (system *system) loadApps() error {
 			continue
 		}
 
-		var sku Sku
+		var sku sku
 		if err := json.Unmarshal(bytes, &sku); err != nil {
 			log.Printf("Unable to parse metadata for app: %v (%v).",
 				v.Name(), err)
@@ -220,7 +221,7 @@ func (system *system) monitorApps() {
 	}
 }
 
-func (system *system) createDownload(sku *Sku) error {
+func (system *system) createDownload(sku *sku) error {
 	dest := filepath.Join(system.deployDir, sku.XRN+".zip")
 	dest, err := filepath.Abs(dest)
 	if err != nil {
@@ -344,11 +345,10 @@ func (system *system) start() {
 }
 
 func (system *system) stop() {
-	log.Println("Stopping sequence.")
+	log.Println("Stopping system.")
 	if system.clock != nil {
 		system.clock.Stop()
 	}
-
 }
 
 func newSystem(source, target string) *system {
@@ -361,13 +361,22 @@ func newSystem(source, target string) *system {
 func main() {
 	log.Println("Welcome to Proxy App Store (port 60001).")
 
-	system := newSystem("./source", "./deploy")
+	var deployDir string
+	var sourceDir string
+
+	flag.StringVar(&deployDir, "d", "./deploy", "Directory for packaged apps.")
+	flag.StringVar(&deployDir, "deploy", "./deploy", "Directory for packaged apps.")
+	flag.StringVar(&sourceDir, "s", "./source", "Directory for application sources.")
+	flag.StringVar(&sourceDir, "source", "./source", "Directory for application sources.")
+
+	flag.Parse()
+
+	log.Printf(" - Deploy pkgs: %v", deployDir)
+	log.Printf(" - Source apps: %v", sourceDir)
+
+	system := newSystem(sourceDir, deployDir)
 
 	go system.start()
-
-	blockUntilShutdownThenDo(func() {
-		system.stop()
-	})
-
+	blockUntilShutdownThenDo(system.stop)
 	log.Println("System halt.")
 }
